@@ -12,66 +12,8 @@ from ipaddress import IPv4Address, IPv4Network, AddressValueError
 from flask_cors import CORS
 from flask import g
 
+from IPRecords import IPRecords
 
-class IPRecords:
-    
-    def __init__(self):
-        self.records = {}
-
-    def set(self, ip, value):
-        self.records[ip] = float(value)
-
-    def delete(self, ip):
-        if ip in self.records:
-            self.records.pop(ip)
-
-    def add(self, ip, value):
-        if ip in self.records:
-            self.records[ip] += float(value)
-        else:
-            self.set(ip, value)
-
-    def subtract(self, ip, value):
-        if ip in self.records:
-            self.records[ip] -= float(value)
-        else:
-            self.set(ip, value)
-
-    def get(self, ip):
-        if ip in self.records:
-            return self.records[ip]
-        else:
-            return 0.0
-
-    def get_network(self, network):
-        value = 0.0
-
-        for ip, val in self.records.items():
-            if ip in network:
-                value += val
-
-        return value
-
-    def get_networks(self, network, resolution):
-        subnets ={}
-
-        for subnet in network.subnets(new_prefix = resolution):
-            subnets[subnet] = 0.0
-
-        for ip, val in self.records.items():
-            if ip in network:
-                ip = (int(ip) >> 32-resolution) << 32-resolution
-                index = IPv4Network((ip, resolution))
-                subnets[index] += val
-
-        return subnets
-
-    def size(self):
-        return len(self.records)
-
-
-
-#################################
 
 class IPVizualizator:
     def __init__(self, file = None):
@@ -309,7 +251,7 @@ def network_get_api(network, mask, resolution = None, test = False):
 @click.option('-f', '--file', metavar='FILE', type=click.File('r'), help='Input file')
 def main(file):
    
-    IP_vizualizator = IPVizualizator(file)
+    #IP_vizualizator = IPVizualizator(file)
 
     
     app = connexion.App(__name__, specification_dir='./api/')
