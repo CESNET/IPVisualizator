@@ -236,7 +236,7 @@ def network_get_api(network, mask, resolution = None, test = False):
         index = (int(subnet.network_address) - int(network.network_address)) >> 32-resolution
         x, y = IP_vizualizator.hilbert_i_to_xy(index, hilbert_order)
         
-        pixels.append({"y": x, "x": y, "Val": value, "Network": str(subnet)})
+        pixels.append({"y": y, "x": x, "Val": value, "Network": str(subnet)})
                     
 
     response["Pixels"] = pixels
