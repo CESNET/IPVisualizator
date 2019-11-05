@@ -7,11 +7,10 @@ IPVizualizator is an interactive heatmap which represents values assigned to IP 
 Velmi krátký návod k použití
 ==============
 
-    - Ve virtualním prostředí a v adresáři _IPVizualizator-python_ proveďte `python -m pip install .`
-    - Spusťte program příkazem `IPVizualizator`. Dojde ke spuštění API rozhraní, které je defaultně dostupné na _127.0.0.1:8080_ . Vizuální rozhraní API běží na adrese _http://127.0.0.1:8080/api/v1/ui/_.
-    - K naplnění daty používejte POST na _/ip_. Data se posílají v JSON ve formátu:
+- Ve virtualním prostředí a v adresáři _IPVizualizator-python_ proveďte `python -m pip install .`
+- Spusťte program příkazem `IPVizualizator`. Dojde ke spuštění API rozhraní, které je defaultně dostupné na _127.0.0.1:8080_ . Vizuální rozhraní API běží na adrese _http://127.0.0.1:8080/api/v1/ui/_.
+- K naplnění daty používejte POST na _/ip_. Data se posílají v JSON ve formátu:
     
-    `
         [
             {
                 "ip": "string",
@@ -19,6 +18,5 @@ Velmi krátký návod k použití
             },
             ...
         ]
-    `
 
-    - V adresáři _example_ je ukázka použití javascriptové knihovny.
+- V adresáři _example_ je ukázka použití javascriptové knihovny.
