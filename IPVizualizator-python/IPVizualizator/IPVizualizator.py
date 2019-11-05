@@ -12,7 +12,7 @@ from ipaddress import IPv4Address, IPv4Network, AddressValueError
 from flask_cors import CORS
 from flask import g
 
-from IPRecords import IPRecords
+from .IPRecords import IPRecords
 
 
 class IPVizualizator:
@@ -258,7 +258,4 @@ def main(file):
     CORS(app.app)
     app.add_api('api.yaml', arguments={'title': 'IPVizualizator'})
     app.run(port=8080)
-    
 
-if __name__ == '__main__':
-    main()

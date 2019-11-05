@@ -1,0 +1,241 @@
+---
+swagger: "2.0"
+info:
+  description: "Simple REST API service for IPVizualizator."
+  version: "1.0.0"
+  title: "IPVizualizator"
+  contact:
+    email: "jancijak@fit.cvut.cz"
+  license:
+    name: "Apache 2.0"
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+basePath: "/api/v1"
+schemes:
+- "https"
+- "http"
+tags:
+- name: "IP address"
+  description: "GET and POST IP address"
+- name: "Networks"
+  description: "GET and POST Networks"
+
+paths:
+  /open:
+    post:
+        tags: ["IP address"]
+        operationId: "IPVizualizator.ip_parse_api"
+        summary: "Fill records"
+        parameters: 
+        - name: "file"
+          in: body
+          description: "File to parse"
+          required: true
+          schema:
+            type: string
+        responses:
+          200:
+            description: "Successful operation"
+          400:
+             description: "Invalid IP address or value"
+        consumes:
+        - "text/plain"
+        produces:
+        - "application/json"
+    /ip:
+      get:
+        tags: ["IP address"]
+        operationId: "IPVizualizator.ip_api"
+        summary: "Get info about IP addresses"
+        responses:
+          200:
+            description: "Successful operation"
+        produces:
+        - "application/json"
+      post:
+        tags: ["IP address"]
+        operationId: "IPVizualizator.ip_post_bulk_api"
+        summary: "Post IPs and their values in JSON format"
+        parameters: 
+        - name: "records"
+          in: body
+          description: "IPs and their values"
+          required: true
+          schema: 
+            type: array
+            items:
+              $ref: '#/definitions/Query'
+        responses:
+          200:
+            description: "Successful operation"
+          400:
+            description: "Invalid format"
+        consumes:
+        - "application/json"
+        produces:
+        - "application/json"
+    /ip/{ip}:
+      get:
+        tags: ["IP address"]
+        operationId: "IPVizualizator.ip_get_api"
+        summary: "Get value for specified IP address"
+        parameters: 
+        - name: "ip"
+          in: "path"
+          description: "IP address"
+          required: true
+          type: string
+        responses:
+          200:
+            description: "Successful operation"
+          400:
+            description: "Invalid IP address"
+        produces:
+        - "application/json"
+      delete:
+        tags: ["IP address"]
+        operationId: "IPVizualizator.ip_delete_api"
+        summary: "Delete specified IP address"
+        parameters: 
+        - name: "ip"
+          in: "path"
+          description: "IP address"
+          required: true
+          type: string
+        responses:
+          200:
+            description: "Successful operation"
+          400:
+            description: "Invalid IP address or value"
+        consumes:
+        - "text/plain"
+        produces:
+        - "a pplication/json"
+    /ip/{ip}/set:
+      post:
+        tags: ["IP address"]
+        operationId: "IPVizualizator.ip_set_api"
+        summary: "Set value for specified IP address"
+        parameters: 
+        - name: "ip"
+          in: "path"
+          description: "IP address"
+          required: true
+          type: string
+        - name: "value"
+          in: body
+          description: "Value for IP address"
+          required: true
+          schema: 
+            type: string
+        responses:
+          200:
+            description: "Successful operation"
+          400:
+            description: "Invalid IP address or value"
+        consumes:
+        - "text/plain"
+        produces:
+        - "application/json"
+    /ip/{ip}/add:
+      post:
+        tags: ["IP address"]
+        operationId: "IPVizualizator.ip_add_api"
+        summary: "Add value to current value for specified IP address"
+        parameters: 
+        - name: "ip"
+          in: "path"
+          description: "IP address"
+          required: true
+          type: string
+        - name: "value"
+          in: body
+          description: "Value for IP address"
+          required: true
+          schema: 
+            type: string
+        responses:
+          200:
+            description: "Successful operation"
+          400:
+            description: "Invalid IP address or value"
+        consumes:
+        - "text/plain"
+        produces:
+        - "application/json"
+    /ip/{ip}/subtract:
+      post:
+        tags: ["IP address"]
+        operationId: "IPVizualizator.ip_subtract_api"
+        summary: "Subtract value from current value for specified IP address"
+        parameters: 
+        - name: "ip"
+          in: "path"
+          description: "IP address"
+          required: true
+          type: string
+        - name: "value"
+          in: body
+          description: "Value for IP address"
+          required: true
+          schema: 
+            type: string
+        responses:
+          200:
+            description: "Successful operation"
+          400:
+            description: "Invalid IP address or value"
+        consumes:
+        - "text/plain"
+        produces:
+        - "application/json"
+    /network/{network}/{mask}:
+      get:
+        tags: ["Network"]
+        operationId: "IPVizualizator.network_get_api"
+        summary: "Get pixels for given network"
+        parameters: 
+        - name: "network"
+          in: "path"
+          description: "Network address"
+          required: true
+          type: string
+        - name: "mask"
+          in: "path"
+          description: "Network mask - must be even"
+          required: true
+          type: string 
+        - name: "resolution"
+          in: "query"
+          description: "Network mask which represent 1px - need to be even - default value is given  network mask+16"
+          type: string
+        - name: "test"
+          in: "query"
+          description: "Random value of each pixel for testing"
+          type: boolean
+        responses:
+          200:
+            description: "Successful operation"
+          400:
+            description: "Invalid network address, mask or resolution"
+        consumes:
+        - "text/plain"
+        produces:
+        - "application/json"
+
+definitions:
+  Query:
+    type: object
+    required:
+      - ip
+      - value
+    properties:
+      ip:
+        type: string
+        description: IP address
+      value:
+        type: number
+        description: Value
+
+externalDocs:
+  description: "Find out more about Swagger"
+  url: "http://swagger.io"

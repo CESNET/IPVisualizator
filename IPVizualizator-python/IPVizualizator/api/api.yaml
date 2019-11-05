@@ -55,12 +55,12 @@ paths:
       tags: ["IP address"]
       operationId: "IPVizualizator.ip_post_bulk_api"
       summary: "Post IPs and their values in JSON format"
-      parameters: 
+      parameters:
       - name: "records"
         in: body
         description: "IPs and their values"
         required: true
-        schema: 
+        schema:
           type: array
           items:
             $ref: '#/definitions/Query'

@@ -19,13 +19,13 @@ class IPRecords:
 
     def add(self, ip, value):
         if ip in self.records:
-            self.records += float(value)
+            self.records[ip] += float(value)
         else:
             self.set(ip, value)
 
     def subtract(self, ip, value):
         if ip in self.records:
-            self.records -= float(value)
+            self.records[ip] -= float(value)
         else:
             self.set(ip, value)
 
