@@ -19,4 +19,5 @@ Velmi krátký návod k použití
             ...
         ]
 
+- K naplnění je možno využít testovacích dat - stačí spustit _./example/fill_db.sh_ . 
 - V adresáři _example_ je ukázka použití javascriptové knihovny.
