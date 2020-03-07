@@ -2,7 +2,10 @@
 class IPVizualizator {
     
     constructor(args) {
-        this.canvas = d3.select(args.canvas);
+        this.canvas_height = args.height;
+        this.canvas_width = args.width;
+        this.canvas = d3.select(args.canvas).append('canvas').attr('width', this.canvas_width).attr('height', this.canvas_height);
+        this.canvas_context = this.canvas.node().getContext('2d');
         this.api = args.api;
         this.network = args.network;
         this.mask = args.mask;
@@ -51,11 +54,12 @@ class IPVizualizator {
         
         $.get(api_call_url, data => {
             this.network_data = data;
-            this.render();
+            this.databind();
+            this.draw();
         });
     }
 
-    render() {
+    databind() {
         this.color_map.domain([parseFloat(this.network_data.Min_value), parseFloat(this.network_data.Max_value)]);
         
         const canvas_width = this.canvas.style("width").slice(0, -2);
@@ -63,7 +67,10 @@ class IPVizualizator {
         const pixel_width = Math.ceil(canvas_width / Math.sqrt(this.network_data.Pixels.length));
         const pixel_height = Math.ceil(canvas_height / Math.sqrt(this.network_data.Pixels.length));
 
-        var pixels = this.canvas.selectAll("rect").data(this.network_data.Pixels);
+        var customBase = document.createElement("custom");
+        var custom = d3.select(customBase);
+
+        var pixels = this.canvas.selectAll("custom.rect").data(this.network_data.Pixels);
 
         pixels
             .exit()
@@ -71,56 +78,61 @@ class IPVizualizator {
         
         var new_pixels = pixels
             .enter()
-            .append("rect");
+            .append("custom")
+            .attr("class", "rect");
             
         new_pixels
             .attr("width", pixel_width)
             .attr("height", pixel_height)
-            .style("fill", "#000000")
+            //.style("fill", "#000000")
+            .attr("fillStyle", d => { 
+                var val = parseFloat(d.Val)
+                return val == 0 ? "#000000" : this.color_map(val);
+            })
             .attr("x", function(d) {
                 return d.x * pixel_width;
             })
             .attr("y", function(d) {
                 return d.y * pixel_height;
             })
-            .on("mouseover", function() { d3.select(this).style("stroke", "#ff0000").style("stroke-width", 3); })
-            .on("mouseout", function() { d3.select(this).style("stroke", null).style("stroke-width", null); })
-            .on("click", d => {
-                this.zoom(d);
-            })
-            .append("title")
-            .text(function(d) { 
-                return "Network: " + d.Network + " Value: " + d.Val ; 
-            });
+            //.on("mouseover", function() { d3.select(this).style("stroke", "#ff0000").style("stroke-width", 3); })
+            //.on("mouseout", function() { d3.select(this).style("stroke", null).style("stroke-width", null); })
+            //.on("click", d => {
+            //    this.zoom(d);
+            //})
+            //.append("title")
+            //.text(function(d) { 
+            //    return "Network: " + d.Network + " Value: " + d.Val ; 
+            //});
 
-        new_pixels    
-            .transition()
-            .duration(1000)
-            .style("fill", d => { 
-                var val = parseFloat(d.Val)
-                return val == 0 ? "#000000" : this.color_map(val);
-            });
+        //new_pixels    
+        //    .transition()
+        //    .duration(1000)
+        //    .style("fill", d => { 
+        //        var val = parseFloat(d.Val)
+        //        return val == 0 ? "#000000" : this.color_map(val);
+        //    });
 
         pixels
             .attr("width", pixel_width)
             .attr("height", pixel_height)
-            .style("fill", "#000000")
+            //.style("fill", "#000000")
             .attr("x", function(d) {
                 return d.x * pixel_width;
             })
             .attr("y", function(d) {
                 return d.y * pixel_height;
             })
-            .style("fill", d => { 
+            .attr("fillStyle", d => { 
                 var val = parseFloat(d.Val)
                 return val == 0 ? "#000000" : this.color_map(val);
             })
-            .select("title")
-            .text(function(d) { 
-                return "Network: " + d.Network + " Value: " + d.Val ; 
-            });
+            //.select("title")
+            //.text(function(d) { 
+            //    return "Network: " + d.Network + " Value: " + d.Val ; 
+            //});
         
-        var all_pixels = this.canvas.selectAll("rect");
+        var all_pixels = this.canvas.selectAll("custom.rect");
 
         if (pixel_width > 10) {
             all_pixels.attr("class", "bordered");
@@ -129,6 +141,25 @@ class IPVizualizator {
             all_pixels.attr("class", "nobordered");
         }
 
+
+    }
+
+
+    draw() {
+        var context = this.canvas_context;
+        context.clearRect(0, 0, this.canvas_width, this.canvas_height);
+        
+        var customBase = document.createElement("custom");
+        var custom = d3.select(customBase);
+        var pixels = custom.selectAll("custom.rect");
+        console.log(pixels.size());
+        pixels.each(function(d) {
+            var pixel = d3.select(this);
+            console.log(pixel.attr("fillStyle"));
+            console.log(context.fillRect(pixel.attr('x'), pixel.attr('y'), pixel.attr('width'), pixel.attr('height')));
+            context.fillStyle = pixel.attr("fillStyle");
+            context.fillRect(pixel.attr('x'), pixel.attr('y'), pixel.attr('width'), pixel.attr('height'));
+        });
 
     }
 

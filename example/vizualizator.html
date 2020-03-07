@@ -35,7 +35,7 @@
             </div>
             <button type="button" id="form-send"  class="btn btn-primary">Show</button>
         </form>
-        <svg id="canvas" style="width: 800px; height: 800px; "></svg>
+        <div id="canvas"></div>
     </div>
 
 
@@ -50,6 +50,8 @@
     <script> 
         const vizualizator = new IPVizualizator({
             "canvas": "#canvas",
+            "height": "800",
+            "width": "800",
             "api": "http://127.0.0.1:8080/api/v1",
             "network": "147.32.0.0",
             "mask": 16,
