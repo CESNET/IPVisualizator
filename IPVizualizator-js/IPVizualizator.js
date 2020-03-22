@@ -6,6 +6,8 @@ class IPVizualizator {
         this.canvas_width = args.width;
         this.canvas = d3.select(args.canvas).append('canvas').attr('width', this.canvas_width).attr('height', this.canvas_height);
         this.canvas_context = this.canvas.node().getContext('2d');
+        var customBase = document.createElement("custom");
+        this.custom = d3.select(customBase);
         this.api = args.api;
         this.network = args.network;
         this.mask = args.mask;
@@ -62,15 +64,11 @@ class IPVizualizator {
     databind() {
         this.color_map.domain([parseFloat(this.network_data.Min_value), parseFloat(this.network_data.Max_value)]);
         
-        const canvas_width = this.canvas.style("width").slice(0, -2);
-        const canvas_height = this.canvas.style("height").slice(0, -2);
-        const pixel_width = Math.ceil(canvas_width / Math.sqrt(this.network_data.Pixels.length));
-        const pixel_height = Math.ceil(canvas_height / Math.sqrt(this.network_data.Pixels.length));
+        const pixel_width = Math.ceil(this.canvas_width / Math.sqrt(this.network_data.Pixels.length));
+        const pixel_height = Math.ceil(this.canvas_height / Math.sqrt(this.network_data.Pixels.length));
 
-        var customBase = document.createElement("custom");
-        var custom = d3.select(customBase);
 
-        var pixels = this.canvas.selectAll("custom.rect").data(this.network_data.Pixels);
+        var pixels = this.custom.selectAll("custom.rect").data(this.network_data.Pixels);
 
         pixels
             .exit()
@@ -132,14 +130,14 @@ class IPVizualizator {
             //    return "Network: " + d.Network + " Value: " + d.Val ; 
             //});
         
-        var all_pixels = this.canvas.selectAll("custom.rect");
+        //var all_pixels = custom.selectAll("custom.rect");
 
-        if (pixel_width > 10) {
-            all_pixels.attr("class", "bordered");
-        }
-        else {
-            all_pixels.attr("class", "nobordered");
-        }
+        //if (pixel_width > 10) {
+        //    all_pixels.attr("class", "bordered");
+       // }
+       // else {
+       //     all_pixels.attr("class", "nobordered");
+       // }
 
 
     }
@@ -149,9 +147,7 @@ class IPVizualizator {
         var context = this.canvas_context;
         context.clearRect(0, 0, this.canvas_width, this.canvas_height);
         
-        var customBase = document.createElement("custom");
-        var custom = d3.select(customBase);
-        var pixels = custom.selectAll("custom.rect");
+        var pixels = this.custom.selectAll("custom.rect");
         console.log(pixels.size());
         pixels.each(function(d) {
             var pixel = d3.select(this);
