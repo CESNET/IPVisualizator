@@ -10,3 +10,17 @@ rect.bordered_hover {
         stroke: #FF0000;
         stroke-width:2px;   
       }
+
+#tooltip {
+    position: absolute;        
+	display: inline-block;
+	padding: 10px;
+	font-family: 'Open Sans' sans-serif;
+	color: #000;
+	background-color: #fff;
+	border: 1px solid #999;
+	border-radius: 2px;
+	pointer-events: none;
+	opacity: 0;
+	z-index: 1;
+}

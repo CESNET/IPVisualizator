@@ -1,10 +1,9 @@
-
 class IPVizualizator {
     
     constructor(args) {
         this.canvas_height = args.height;
         this.canvas_width = args.width;
-        this.canvas = d3.select(args.canvas).append('canvas').attr('width', this.canvas_width).attr('height', this.canvas_height);
+        this.canvas = d3.select(args.canvas).append('canvas').classed('mainCanvas', true).attr('width', this.canvas_width).attr('height', this.canvas_height);
         this.canvas_context = this.canvas.node().getContext('2d');
         var customBase = document.createElement("custom");
         this.custom = d3.select(customBase);
@@ -13,10 +12,17 @@ class IPVizualizator {
         this.mask = args.mask;
         this.resolution = args.resolution;
         this.test_mode = args.test_mode;
+        this.bordered_pixel = 'bordered_pixel' in args ? args.bordered_pixel : true;
 
         this.network_data = {};
         this.color_map = d3.scaleSequential().interpolator(d3.interpolateViridis);
+        this.hidden_canvas = d3.select(args.canvas).append('canvas').classed('hiddenCanvas', true).attr('style', 'display: none;').attr('width',this.canvas_width).attr('height', this.canvas_height);
+        this.hidden_canvas_context = this.hidden_canvas.node().getContext('2d');
+        this.nextCol = 1;
+        this.color_to_pixel = {};
+        this.actual_pixel = null;
         this.update();
+        this.add_listeners();
     }
 
     info() {
@@ -51,13 +57,25 @@ class IPVizualizator {
         return this.api + "/network/" + this.network + "/" + this.mask +"?resolution=" + this.resolution + "&test=" + this.test_mode;
     }
 
+    genColor() {
+        var ret = [];
+        if(this.nextCol < 16777215){
+            ret.push(this.nextCol & 0xff);
+            ret.push((this.nextCol & 0xff00) >> 8);
+            ret.push((this.nextCol & 0xff0000) >> 16); 
+            this.nextCol += 1;
+        }
+        var col = "rgb(" + ret.join(',') + ")";
+        return col;
+    }
     update() {
         const api_call_url = this.create_api_call_url();
         
         $.get(api_call_url, data => {
             this.network_data = data;
             this.databind();
-            this.draw();
+            this.draw(false);
+            this.draw(true);
         });
     }
 
@@ -82,39 +100,27 @@ class IPVizualizator {
         new_pixels
             .attr("width", pixel_width)
             .attr("height", pixel_height)
-            //.style("fill", "#000000")
             .attr("fillStyle", d => { 
                 var val = parseFloat(d.Val)
                 return val == 0 ? "#000000" : this.color_map(val);
+            })
+            .attr("fillStyleHidden", d => { 
+                if(!d.hiddenCol) {
+                    d.hiddenCol = this.genColor(); 
+                    this.color_to_pixel[d.hiddenCol] = d;
+                }
+                return d.hiddenCol;
             })
             .attr("x", function(d) {
                 return d.x * pixel_width;
             })
             .attr("y", function(d) {
                 return d.y * pixel_height;
-            })
-            //.on("mouseover", function() { d3.select(this).style("stroke", "#ff0000").style("stroke-width", 3); })
-            //.on("mouseout", function() { d3.select(this).style("stroke", null).style("stroke-width", null); })
-            //.on("click", d => {
-            //    this.zoom(d);
-            //})
-            //.append("title")
-            //.text(function(d) { 
-            //    return "Network: " + d.Network + " Value: " + d.Val ; 
-            //});
-
-        //new_pixels    
-        //    .transition()
-        //    .duration(1000)
-        //    .style("fill", d => { 
-        //        var val = parseFloat(d.Val)
-        //        return val == 0 ? "#000000" : this.color_map(val);
-        //    });
+            });
 
         pixels
             .attr("width", pixel_width)
             .attr("height", pixel_height)
-            //.style("fill", "#000000")
             .attr("x", function(d) {
                 return d.x * pixel_width;
             })
@@ -125,38 +131,51 @@ class IPVizualizator {
                 var val = parseFloat(d.Val)
                 return val == 0 ? "#000000" : this.color_map(val);
             })
-            //.select("title")
-            //.text(function(d) { 
-            //    return "Network: " + d.Network + " Value: " + d.Val ; 
-            //});
+            .attr("fillStyleHidden", d => { 
+                if(!d.hiddenCol) {
+                    d.hiddenCol = this.genColor(); 
+                    this.color_to_pixel[d.hiddenCol] = d;
+                }
+                return d.hiddenCol;
+            })
         
-        //var all_pixels = custom.selectAll("custom.rect");
+        var all_pixels = this.custom.selectAll("custom.rect");
 
-        //if (pixel_width > 10) {
-        //    all_pixels.attr("class", "bordered");
-       // }
-       // else {
-       //     all_pixels.attr("class", "nobordered");
-       // }
+        if (pixel_width > 20 && this.bordered_pixel) {
+            all_pixels.attr("border", "bordered");
+        }
+        else {
+            all_pixels.attr("border", "nobordered");
+       }
 
 
     }
 
 
-    draw() {
+    draw(hidden) {
         var context = this.canvas_context;
+        if(hidden) {
+            context = this.hidden_canvas_context;
+        }
         context.clearRect(0, 0, this.canvas_width, this.canvas_height);
         
         var pixels = this.custom.selectAll("custom.rect");
-        console.log(pixels.size());
         pixels.each(function(d) {
             var pixel = d3.select(this);
-            console.log(pixel.attr("fillStyle"));
-            console.log(context.fillRect(pixel.attr('x'), pixel.attr('y'), pixel.attr('width'), pixel.attr('height')));
-            context.fillStyle = pixel.attr("fillStyle");
+            context.fillStyle = hidden ? pixel.attr('fillStyleHidden') : pixel.attr('fillStyle');
             context.fillRect(pixel.attr('x'), pixel.attr('y'), pixel.attr('width'), pixel.attr('height'));
+            if(pixel.attr("border") == "bordered" && hidden == false) {
+                context.lineWidth = 2;
+                context.strokeStyle = "#C7C7C7";
+                context.strokeRect(pixel.attr('x'), pixel.attr('y'), pixel.attr('width'), pixel.attr('height'));
+            }
         });
-
+        //    if(this.actual_pixel != null && hidden == false) {
+        //        var pixel = d3.select(this.actual_pixel);
+        //        context.lineWidth = 1;
+        //        context.strokeStyle = "#FF0000";
+        //        context.strokeRect(pixel.attr('x'), pixel.attr('y'), pixel.attr('width'), pixel.attr('height'));
+        //    }
     }
 
     zoom(d) {
@@ -167,6 +186,59 @@ class IPVizualizator {
         this.update();
 
     }
+    
+    add_listeners() {
+        d3.select('.mainCanvas').on('mousemove',  d => {
+            var mouseX = d3.event.layerX || d3.event.offsetX;
+			var mouseY = d3.event.layerY || d3.event.offsetY;
+			var hiddenCtx = this.hidden_canvas_context;
 
+			var col = hiddenCtx.getImageData(mouseX, mouseY, 1, 1).data;
+			var colKey = 'rgb(' + col[0] + ',' + col[1] + ',' + col[2] + ')';
+
+			var pixelData = this.color_to_pixel[colKey];
+            //if(pixelData != this.actual_pixel) {
+            //    this.actual_pixel = pixelData;
+            //    this.draw(false);
+            //}
+			if (pixelData) {
+
+				d3.select('#tooltip')
+					.style('opacity', 0.8)
+					.style('top', d3.event.pageY + 5 + 'px')
+					.style('left', d3.event.pageX + 5 + 'px')
+					.html("<b>Network:</b> " + pixelData.Network + "<br /><b>Value:</b> " + pixelData.Val );
+
+			} else {
+
+				d3.select('#tooltip')
+					.style('opacity', 0);
+
+			}
+
+		});
+        d3.select('.mainCanvas').on('click',  d => {
+            var mouseX = d3.event.layerX || d3.event.offsetX;
+			var mouseY = d3.event.layerY || d3.event.offsetY;
+			var hiddenCtx = this.hidden_canvas_context;
+
+			var col = hiddenCtx.getImageData(mouseX, mouseY, 1, 1).data;
+			var colKey = 'rgb(' + col[0] + ',' + col[1] + ',' + col[2] + ')';
+
+			var pixelData = this.color_to_pixel[colKey];
+            this.actual_pixel = null;
+
+			if (pixelData) {
+                this.zoom(pixelData);
+			}
+
+		});
+        d3.select('.mainCanvas').on('mouseout',  d => {
+				d3.select('#tooltip')
+					.style('opacity', 0);
+		
+                this.actual_pixel = null;
+            });
+    }
     
 }
