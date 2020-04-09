@@ -15,5 +15,5 @@ setup(
             'IPVizualizator = IPVizualizator.IPVizualizator:main',
         ],
     },
-    install_requires=['click','connexion[swagger-ui]','flask_cors']
+    install_requires=['connexion[swagger-ui]','flask_cors']
 )

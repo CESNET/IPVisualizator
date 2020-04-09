@@ -4,7 +4,6 @@ IPVizualizator Backend
 """
 
 import sys
-import click
 import connexion
 import random
 import math
@@ -16,11 +15,8 @@ from .IPRecords import IPRecords
 
 
 class IPVizualizator:
-    def __init__(self, file = None):
+    def __init__(self):
         self.ip_records = IPRecords()
-        
-        if file is not None:
-            self.parse_input_file(file, ' ')
 
     def hilbert_i_to_xy(self, ix, order):
         state = 0
@@ -58,45 +54,6 @@ class IPVizualizator:
 
     def count_IPs(self):
         return self.ip_records.size()
-
-    def parse_input_file(self, file, delim):
-        for line in file:
-            line = line.strip()
-            if line == '' or line[0] == '#':
-                continue
-    
-            vals = line.split(delim)
-            format = None
-
-            if len(vals) == 2:
-                try:
-                    IPv4Address(vals[0])
-                except AddressValueError:
-                    try:
-                        IPv4Address(vals[1])
-                    except AddressValueError:
-                        print("Error: Unknown input format, one of the fields must be a valid IPv4 address", file=sys.stderr)
-                        exit(1)
-                    format = 'value-ip'
-                format = 'ip-value'
-            elif len(vals) == 1:
-                format = 'ip'
-            else:
-                print("Error: Unknown input format, there must be one or two fields on each line, one of them containing a valid IPv4 address", file=sys.stderr)
-                exit(1)
-
-            # Parse line
-            if format == 'ip-value':
-                addr = IPv4Address(vals[0])
-                val = float(vals[1])
-            elif format == 'value-ip':
-                addr = IPv4Address(vals[1])
-                val = float(vals[0])
-            else:
-                addr = IPv4Address(line)
-                val = 1.0 
-            
-            self.set_ip_record(addr, val)
 
 IP_vizualizator = IPVizualizator()
 
@@ -247,13 +204,7 @@ def network_get_api(network, mask, resolution = None, test = False):
     return response, 200
 #################################
 
-@click.command()
-@click.option('-f', '--file', metavar='FILE', type=click.File('r'), help='Input file')
-def main(file):
-   
-    #IP_vizualizator = IPVizualizator(file)
-
-    
+def main():
     app = connexion.App(__name__, specification_dir='./api/')
     CORS(app.app)
     app.add_api('api.yaml', arguments={'title': 'IPVizualizator'})
