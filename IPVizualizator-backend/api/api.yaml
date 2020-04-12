@@ -1,0 +1,441 @@
+---
+swagger: "2.0"
+
+info:
+  description: "REST API service for IPVizualizator module."
+  version: "1.0.0"
+  title: "IPVizualizator"
+  contact:
+    email: "jancijak@fit.cvut.cz"
+  license:
+    name: "Apache 2.0" 
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+
+basePath: "/api/v1"
+
+schemes:
+- "https"
+- "http"
+
+tags:
+- name: "Vizualizator"
+  description: "Add and update IP data"
+- name: "Map"
+  description: "Get heatmap for given network"
+- name: "User"
+  description: "Operations with users"
+
+securityDefinitions:
+  APIKey:
+     type: apiKey
+     in: header
+     name: Authorization
+     #x-apikeyInfoFunc: IPVizualizator.apikey_auth
+
+paths:
+  /vizualizator:
+    post:
+      tags: ["Vizualizator"]
+      summary: "Post IPs and their values for new dataset"
+      #operationId: IPVizualizator.create_new_dataset_api
+      parameters:
+      - name: "records"
+        in: "body"
+        description: "IPs and their values"
+        required: true
+        schema:
+          $ref: "#/definitions/Vizualizator"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/Token"
+        400:
+          description: "Invalid format"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      consumes:
+       - "application/json"
+      produces:
+      - "application/json"
+      security:
+      - APIKey: []
+        #  /vizualizator/{token}:
+        #    put:
+        #      tags: ["Vizualizator"]
+        #      summary: "Update IPs and their values for existing dataset (delete all old records)"
+        #      parameters:
+        #      - name: "token"
+        #        in: "path"
+        #        description: "Dataset token"
+        #        required: true
+        #        type: "string"
+        #      - name: "records"
+        #        in: "body"
+        #        description: "IPs and their values"
+        #        required: true
+        #        schema:
+        #          $ref: "#/definitions/Vizualizator"
+        #      responses:
+        #        200:
+        #          description: "Successful operation"
+        #        400:
+        #          description: "Invalid format"
+        #          schema:
+        #            $ref: "#/definitions/ResponseStatus"
+        #        404:
+        #          description: "Dataset token doesn't exist"
+        #          schema:
+        #            $ref: "#/definitions/ResponseStatus"
+        #        401:
+        #          $ref: '#/responses/UnauthorizedError'
+        #      consumes:
+        #       - "application/json"
+        #      produces:
+        #      - "application/json"
+        #      security:
+        #      - APIKey: []
+        #    patch:
+        #      tags: ["Vizualizator"]
+        #      summary: "Update IPs and their values for existing dataset (preserve old records which hasn't been updated)"
+        #      parameters:
+        #      - name: "token"
+        #        in: "path"
+        #        description: "Dataset token"
+        #        required: true
+        #        type: "string"
+        #      - name: "add"
+        #        in: "query"
+        #        description: "Values for IPs will be added to current value"
+        #        type: "boolean"
+        #      - name: "subtract"
+        #        in: "query"
+        #        description: "Values for IPs will be subtracted from current value"
+        #        type: "boolean"
+        #      - name: "records"
+        #        in: "body"
+        #        description: "IPs and their values"
+        #        required: true
+        #        schema:
+        #          $ref: "#/definitions/Vizualizator"
+        #      responses:
+        #        200:
+        #          description: "Successful operation"
+        #        400:
+        #          description: "Invalid format"
+        #          schema:
+        #            $ref: "#/definitions/ResponseStatus"
+        #        404:
+        #          description: "Dataset token doesn't exist"
+        #          schema:
+        #            $ref: "#/definitions/ResponseStatus"
+        #        401:
+        #          $ref: '#/responses/UnauthorizedError'
+        #      consumes:
+        #       - "application/json"
+        #      produces:
+        #      - "application/json"
+        #      security:
+        #      - APIKey: []
+        #    delete:
+        #      tags: ["Vizualizator"]
+        #      summary: "Delete existing dataset"
+        #      parameters:
+        #      - name: "token"
+        #        in: "path"
+        #        description: "Dataset token"
+        #        required: true
+        #        type: "string"
+        #      responses:
+        #        200:
+        #          description: "Successful operation"
+        #        400:
+        #          description: "Invalid format"
+        #          schema:
+        #            $ref: "#/definitions/ResponseStatus"
+        #        404:
+        #          description: "Dataset token doesn't exist"
+        #          schema:
+        #            $ref: "#/definitions/ResponseStatus"
+        #        401:
+        #          $ref: '#/responses/UnauthorizedError'
+        #      produces:
+        #      - "application/json"
+        #      security:
+        #      - APIKey: []
+        #  /vizualizator/{token}/ip/{ip}:
+        #    get:
+        #      tags: ["Vizualizator"]
+        #      summary: "Get value of IP for given dataset"
+        #      parameters:
+        #      - name: "token"
+        #        in: "path"
+        #        description: "Dataset token"
+        #        required: true
+        #        type: "string"
+        #      - name: "ip"
+        #        in: "path"
+        #        description: "IP address"
+        #        required: true
+        #        type: "string"
+        #      responses:
+        #        200:
+        #          description: "Successful operation"
+        #          schema:
+        #            $ref: "#/definitions/IP"
+        #        400:
+        #          description: "Invalid format of IP address"
+        #          schema:
+        #            $ref: "#/definitions/ResponseStatus"
+        #        404:
+        #          description: "Dataset token doesn't exist"
+        #          schema:
+        #            $ref: "#/definitions/ResponseStatus"
+        #        401:
+        #          $ref: '#/responses/UnauthorizedError'
+        #      produces:
+        #      - "application/json"
+        #      security:
+        #      - APIKey: []
+        #    delete:
+        #      tags: ["Vizualizator"]
+        #      summary: "Delete IP from given dataset"
+        #      parameters:
+        #      - name: "token"
+        #        in: "path"
+        #        description: "Dataset token"
+        #        required: true
+        #        type: "string"
+        #      - name: "ip"
+        #        in: "path"
+        #        description: "IP address"
+        #        required: true
+        #        type: "string"
+        #      responses:
+        #        200:
+        #          description: "Successful operation"
+        #        400:
+        #          description: "Invalid format of IP address"
+        #          schema:
+        #            $ref: "#/definitions/ResponseStatus"
+        #        404:
+        #          description: "Dataset token doesn't exist"
+        #          schema:
+        #            $ref: "#/definitions/ResponseStatus"
+        #        401:
+        #          $ref: '#/responses/UnauthorizedError'
+        #      produces:
+        #      - "application/json"
+        #      security:
+        #      - APIKey: []
+        #    put:
+        #      tags: ["Vizualizator"]
+        #      summary: "Update IP and its value for existing dataset"
+        #      parameters:
+        #      - name: "token"
+        #        in: "path"
+        #        description: "Dataset token"
+        #        required: true
+        #        type: "string"
+        #      - name: "ip"
+        #        in: "path"
+        #        description: "IP address"
+        #        required: true
+        #        type: "string"
+        #      - name: "add"
+        #        in: "query"
+        #        description: "Value for IP will be added to current value"
+        #        type: "boolean"
+        #      - name: "subtract"
+        #        in: "query"
+        #        description: "Value for IP will be subtracted from current value"
+        #        type: "boolean"
+        #      - name: "value"
+        #        in: "body"
+        #        description: "Value"
+        #        required: true
+        #        schema: 
+        #          type: "string"
+        #      responses:
+        #        200:
+        #          description: "Successful operation"
+        #        400:
+        #          description: "Invalid format"
+        #          schema:
+        #            $ref: "#/definitions/ResponseStatus"
+        #        404:
+        #          description: "Dataset token doesn't exist"
+        #          schema:
+        #            $ref: "#/definitions/ResponseStatus"
+        #        401:
+        #          $ref: '#/responses/UnauthorizedError'
+        #      consumes:
+        #       - "text/plain"
+        #      produces:
+        #      - "application/json"
+        #      security:
+        #      - APIKey: []
+        #  /vizualizator/{token}/map/{network}/{mask}:
+        #    get:
+        #      tags: ["Map"]
+        #      summary: "Get pixels for given network and dataset token "
+        #      parameters: 
+        #      - name: "token"
+        #        in: "path"
+        #        description: "Dataset token"
+        #        required: true
+        #        type: "string"
+        #      - name: "network"
+        #        in: "path"
+        #        description: "Network address"
+        #        required: true
+        #        type: "string"
+        #      - name: "mask"
+        #        in: "path"
+        #        description: "Network mask - must be even"
+        #        required: true
+        #        type: "string" 
+        #      - name: "resolution"
+        #        in: "query"
+        #        description: "Network mask which represent 1px - need to be even - default value is given network mask+16"
+        #        type: "string"
+        #      - name: "test"
+        #        in: "query"
+        #        description: "Random value of each pixel for testing"
+        #        type: "boolean"
+        #      responses:
+        #        200:
+        #          description: "Successful operation"
+        #        400:
+        #          description: "Invalid network address, mask or resolution"
+        #          schema:
+        #            $ref: "#/definitions/ResponseStatus"
+        #        404:
+        #          description: "Dataset token doesn't exist"
+        #          schema:
+        #            $ref: "#/definitions/ResponseStatus"
+        #        401:
+        #          $ref: '#/responses/UnauthorizedError'
+        #      produces:
+        #      - "application/json"
+  /user:
+    post:
+      tags: ["User"]
+      summary: "Create new user"
+      #operationId: IPVizualizator.create_new_dataset_api
+      parameters:
+      - name: "user"
+        in: "body"
+        description: "JSON with username of new user"
+        required: true
+        schema:
+          $ref: "#/definitions/User"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/ResponseUser"
+        400:
+          description: "Invalid format"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+      consumes:
+       - "application/json"
+      produces:
+      - "application/json"
+    delete:
+      tags: ["User"]
+      summary: "Delete authorized user and owned dataset"
+      #operationId: IPVizualizator.create_new_dataset_api
+      responses:
+        200:
+          description: "Successful operation"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      produces:
+      - "application/json"
+      security:
+      - APIKey: []
+
+definitions:
+  IP:
+    type: "object"
+    required:
+      - "ip"
+      - "val"
+    properties:
+      ip:
+        type: "string"
+        description: "IP address"
+        example: "147.32.120.36"
+      val:
+        type: "number"
+        description: "Value"
+        example: 1
+  Vizualizator:
+    type: "object"
+    required:
+      - "ips"
+    properties:
+       ips:
+        type: "array"
+        items:
+          $ref: "#/definitions/IP"
+  ResponseStatus:
+    type: "object"
+    required:
+      - "status"
+    properties:
+      status:
+        type: "string"
+        description: "Status"
+        example: "error"
+      reason:
+        type: "string"
+        description: "Additional information"
+        example: "Invalid number"
+  Token:
+    type: "object"
+    required:
+      - "token"
+    properties:
+      token:
+        type: "string"
+        description: "Token identifying given records"
+  User:
+    type: "object"
+    required:
+      - "username"
+    properties:
+      username:
+        type: "string"
+        description: "Username"
+  ResponseUser:
+    type: "object"
+    required:
+      - "id"
+      - "username"
+      - "authorization"
+    properties:
+      id:
+        type: "number"
+        description: "User ID"
+      username:
+        type: "string"
+        description: "Username"
+      authorization:
+        type: "string"
+        description: "User authorization token"
+
+responses:
+  UnauthorizedError:
+    description: "API key is missing, invalid or doesn't own requested resources"
+    headers:
+      WWW_Authenticate:
+        type: "string"
+
+externalDocs:
+  description: "Find out more about Swagger"
+  url: "http://swagger.io"
