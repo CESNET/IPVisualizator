@@ -1,2 +1,3 @@
-IPVizualizator-python/__*
+.idea
+__venv__
 __pycache__
