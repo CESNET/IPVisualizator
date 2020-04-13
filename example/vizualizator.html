@@ -63,6 +63,11 @@
         });
 
         $(document).ready(function(){
+            token = $("#token").val(vizualizator.token);
+            network = $("#network").val(vizualizator.network); 
+            mask = $("#mask").val(vizualizator.mask); 
+            resolution = $("#resolution").val(vizualizator.resolution);
+
             $("#form-send").click(function(){
                 token = $("#token").val();
                 network = $("#network").val(); 
