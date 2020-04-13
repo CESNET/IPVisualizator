@@ -6,8 +6,8 @@ redis:
   db: 0
   data_prefix: "ipvizualizator"
 users:
-# IDs of users described in this config must be less than 1000
-- id: 1
+# UIDs of users described in this config must be less than 1000
+- uid: 1
   username: "admin"
   admin: true
-  authorization: "asdf1234567890"
+  authorization: "ce7f5abdf69365fcdd9703009e54d2de"
