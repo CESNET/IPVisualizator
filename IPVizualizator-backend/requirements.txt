@@ -1,3 +1,5 @@
-connexion[swagger-ui]
+connexion[swagger-ui]~=2.6.0
 flask_cors
-redis
+redis~=3.4.1
+PyYAML~=5.3.1
+Flask~=1.1.2

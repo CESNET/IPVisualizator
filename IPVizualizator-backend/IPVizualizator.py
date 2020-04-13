@@ -14,173 +14,182 @@ from flask_cors import CORS
 from flask import g
 import yaml
 
-from IPRecords import IPRecords
-from redisdb import RedisDB
-
+from redisdb import RedisDB, NotFoundError
 
 CONFIG_FILE = "config/config.yaml"
 CONFIG = {}
-DB = None
 
+#################################
+# Open Config
 with open(CONFIG_FILE, 'r') as data:
-         try:
-             CONFIG = yaml.safe_load(data)
-         except yaml.YAMLError as exc:
-             print(exc)
-             sys.exit(1)
+    try:
+        CONFIG = yaml.safe_load(data)
+    except yaml.YAMLError as exc:
+        print(exc)
+        sys.exit(1)
+
+#################################
+# Helpers
 
 
-class IPVizualizator:
-    def __init__(self):
-        self.ip_records = IPRecords()
+def validate_ip_data(records):
+    temp_records = []
 
-    def hilbert_i_to_xy(self, ix, order):
-        state = 0
-        x = 0
-        y = 0
-        
-        for it in range(2*order-2, -2, -2):
-            row = 4*state | ((ix >> it) & 3)
-            x = (x << 1) | ((0x936C >> row) & 1)
-            y = (y << 1) | ((0x39C6 >> row) & 1)
-            state = (0x3E6B94C1 >> 2 * row) & 3
-    
-        return (x,y)
+    for record in records:
+        ip = IPv4Address(record["ip"])
+        value = float(record["val"])
 
-    def set_ip_record(self, ip, value):
-        return self.ip_records.set(ip, value)
+        temp_records.append({"ip": ip, "value": value})
 
-    def del_ip_record(self, ip):
-        return self.ip_records.delete(ip)
-
-    def add_ip_record(self, ip, value):
-        return self.ip_records.add(ip, value)
-
-    def subtract_ip_record(self, ip, value):
-        return self.ip_records.subtract(ip, value)
-
-    def get_ip_record(self, ip):
-        return self.ip_records.get(ip)
-
-    def get_network_record(self, network):
-        return self.ip_records.get_network(network) 
-
-    def get_networks_record(self, network, resolution):
-        return self.ip_records.get_networks(network, resolution)
-
-    def count_IPs(self):
-        return self.ip_records.size()
-
-IP_vizualizator = IPVizualizator()
+    return temp_records
 
 #################################
 # API
-def ip_get_api(ip):
-    try:
-        ip = IPv4Address(ip)
-    except ValueError:
-        return {"Status": "error", "Reason": "IP address is invalid"}, 400
-    
-    value = IP_vizualizator.get_ip_record(ip)
-    
-    return {"Status": "ok", "Value": value}, 200
 
-def ip_set_api(ip, value):
+
+def create_new_dataset_api(user, records):
+    try:
+        records = validate_ip_data(records["ips"])
+    except ValueError:
+        return {"status": 400, "detail": "Some IP or value is invalid."}, 400
+
+    user = db.find_user_by_uid(user)
+    dataset = db.create_dataset(records, user)
+
+    return {"status": 200, "token": dataset.token }, 200
+
+
+def update_dataset_api(user, token, records):
+    if db.dataset_exist(token) is False:
+        return {"status": 404, "detail": "Dataset not found"}, 404
+
+    user = db.find_user_by_uid(user)
+
+    if db.user_permission(user, token) is False:
+        return {"status": 401, "detail": "User doesn't have a permission to manipulate with this dataset"}, 401
+
+    try:
+        records = validate_ip_data(records["ips"])
+    except ValueError:
+        return {"status": 400, "detail": "Some IP or value is invalid."}, 400
+    dataset = db.update_dataset(token, records, delete_old_records=True)
+
+    return {"status": 200}, 200
+
+
+def patch_dataset_api(user, token, records, incr=False, decr=False,):
+    if db.dataset_exist(token) is False:
+        return {"status": 404, "detail": "Dataset not found"}, 404
+
+    user = db.find_user_by_uid(user)
+
+    if db.user_permission(user, token) is False:
+        return {"status": 401, "detail": "User doesn't have a permission to manipulate with this dataset"}, 401
+
+    try:
+        records = validate_ip_data(records["ips"])
+    except ValueError:
+        return {"status": 400, "detail": "Some IP or value is invalid."}, 400
+
+    if incr is True:
+        dataset = db.update_dataset(token, records, update="incr", delete_old_records=False)
+    elif decr is True:
+        dataset = db.update_dataset(token, records, update="decr", delete_old_records=False)
+    else:
+        dataset = db.update_dataset(token, records, delete_old_records=False)
+
+    return {"status": 200}, 200
+
+
+def delete_dataset_api(user, token):
+    if db.dataset_exist(token) is False:
+        return {"status": 404, "detail": "Dataset not found"}, 404
+
+    user = db.find_user_by_uid(user)
+
+    if db.user_permission(user, token) is False:
+        return {"status": 401, "detail": "User doesn't have a permission to manipulate with this dataset"}, 401
+
+    db.delete_dataset(token)
+
+    return {"status": 200}, 200
+
+
+def get_ip_api(user, token, ip):
+    if db.dataset_exist(token) is False:
+        return {"status": 404, "detail": "Dataset not found"}, 404
+
+    user = db.find_user_by_uid(user)
+
+    if db.user_permission(user, token) is False:
+        return {"status": 401, "detail": "User doesn't have a permission to manipulate with this dataset"}, 401
+
     try:
         ip = IPv4Address(ip)
     except ValueError:
-        return {"Status": "error", "Reason": "IP address is invalid"}, 400
-    
+        return {"status": 400, "detail": "IP address is invalid"}, 400
+
+    ip_record = db.get_ip_record(token, ip)
+
+    return {"status": 200, "ip": str(ip_record.ip), "val": ip_record.value}, 200
+
+
+def delete_ip_api(user, token, ip):
+    if db.dataset_exist(token) is False:
+        return {"status": 404, "detail": "Dataset not found"}, 404
+
+    user = db.find_user_by_uid(user)
+
+    if db.user_permission(user, token) is False:
+        return {"status": 401, "detail": "User doesn't have a permission to manipulate with this dataset"}, 401
+
     try:
+        ip = IPv4Address(ip)
+    except ValueError:
+        return {"status": 400, "detail": "IP address is invalid"}, 400
+
+    ip_record = db.delete_ip_record(token, ip)
+
+    return {"status": 200}, 200
+
+
+def put_ip_api(user, token, ip, value, incr=False, decr=False,):
+    if db.dataset_exist(token) is False:
+        return {"status": 404, "detail": "Dataset not found"}, 404
+
+    user = db.find_user_by_uid(user)
+
+    if db.user_permission(user, token) is False:
+        return {"status": 401, "detail": "User doesn't have a permission to manipulate with this dataset"}, 401
+
+    try:
+        ip = IPv4Address(ip)
         value = float(value)
     except ValueError:
-        return {"Status": "error", "Reason": "Value is not float"}, 400
+        return {"status": 400, "detail": "IP address or value is invalid"}, 400
 
-    IP_vizualizator.set_ip_record(ip, value)
-    
-    return {"Status": "ok"}, 200
+    if incr is True:
+        dataset = db.update_ip_record(token, ip, value, update="incr")
+    elif decr is True:
+        dataset = db.update_ip_record(token, ip, value, update="decr")
+    else:
+        dataset = db.update_ip_record(token, ip, value, update="set")
 
-def ip_add_api(ip, value):
-    try:
-        ip = IPv4Address(ip)
-    except ValueError:
-        return {"Status": "error", "Reason": "IP address is invalid"}, 400
-    
-    try:
-        value = float(value)
-    except ValueError:
-        return {"Status": "error", "Reason": "Value is not float"}, 400
-
-    IP_vizualizator.add_ip_record(ip, value)
-    
-    return {"Status": "ok"}, 200
-
-def ip_subtract_api(ip, value):
-    try:
-        ip = IPv4Address(ip)
-    except ValueError:
-        return {"Status": "error", "Reason": "IP address is invalid"}, 400
-    
-    try:
-        value = float(value)
-    except ValueError:
-        return {"Status": "error", "Reason": "Value is not float"}, 400
-
-    IP_vizualizator.subtract_ip_record(ip, value)
-    
-    return {"Status": "ok"}, 200
-
-def ip_delete_api(ip):
-    try:
-        ip = IPv4Address(ip)
-    except ValueError:
-        return {"Status": "error", "Reason": "IP address is invalid"}, 400
-
-    IP_vizualizator.del_ip_record(ip)
-    
-    return {"Status": "ok"}, 200
-
-def ip_parse_api(file):
-    try:
-        with open(file) as f: 
-            IP_vizualizator.parse_input_file(f, ' ') 
-    except EnvironmentError:
-        return {"Status": "error", "Reason": "File is invalid"}, 400
-    
-    return {"Status": "ok"}, 200
-
-def ip_api():
-    return {"Size": IP_vizualizator.count_IPs()}, 200
-
-def create_new_dataset_api(user,records):
-    logging.info("dostali hjsne se sem")
-    temp_records = {}
-
-    for record in records:
-        try:
-            ip = IPv4Address(record['ip'])
-            value = float(record['value'])
-        except ValueError:
-            return {"Status": "error", "Reason": "IP {} or value {} is invalid.".format(record['ip'], record['value'])}, 400
-        
-        temp_records[ip] = value
-
-    for ip, value in temp_records.items():
-        IP_vizualizator.set_ip_record(ip, value)
-
-    return {"Status": "ok"}, 200
+    return {"status": 200}, 200
 
 
-def network_get_api(network, mask, resolution = None, test = False):
+def get_map_api(token, network, mask, resolution=None):
+    if db.dataset_exist(token) is False:
+        return {"status": 404, "detail": "Dataset not found"}, 404
+
     try:
         mask = int(mask)
         network = IPv4Network((network, mask))
     except ValueError:
-        return {"Status": "error", "Reason": "Network or mask is invalid."}, 400
-    
-    if mask % 2 != 0:
-        return {"Status": "error", "Reason": "Mask must be even number"}, 400
+        return {"status": 400, "detail": "Network or mask is invalid."}, 400
 
+    if mask % 2 != 0:
+        return {"status": 400, "detail": "Mask must be even number"}, 400
 
     if resolution is None:
         resolution = mask + 16 if mask + 16 <= 32 else 32
@@ -188,55 +197,68 @@ def network_get_api(network, mask, resolution = None, test = False):
         try:
             resolution = int(resolution)
         except ValueError:
-            return {"Status": "error", "Reason": "Resolution is not int."}, 400
-       
-        if resolution % 2 != 0 or resolution < network.prefixlen or resolution > 32:
-            return {"Status": "error", "Reason": "Resolution is invalid - not even or less than given mask or greater than 32."}, 400
+            return {"status": 400, "detail": "Resolution is not integer."}, 400
 
-    response = {"Status": "ok", "Network": str(network.network_address), "Mask": str(network.netmask), "Prefix_length": network.prefixlen, "Min_address": str(network.network_address), "Max_address": str(network.broadcast_address), "Pixel_mask": resolution, "Test": test}
+        if resolution % 2 != 0 or resolution < network.prefixlen or resolution > 32:
+            return {"status": 400,
+                    "detail": "Resolution is invalid - not even or less than given mask or greater than 32."}, 400
+
+    response = {"status": 200, "network": str(network.network_address), "mask": str(network.netmask),
+                "prefix_length": network.prefixlen, "min_address": str(network.network_address),
+                "max_address": str(network.broadcast_address), "pixel_mask": resolution}
     max_value = - math.inf
     min_value = math.inf
     pixels = []
 
     hilbert_order = int((resolution - network.prefixlen) / 2)
-    
-    for subnet, value in IP_vizualizator.get_networks_record(network, resolution).items():
-        if test is True:
-            value = random.randint(0, 1000)
+    dataset = db.get_dataset(token)
 
-        min_value = value if value < min_value else min_value 
+    for subnet, value in dataset.get_networks(network, resolution).items():
+        min_value = value if value < min_value else min_value
         max_value = value if value > max_value else max_value
-        
-        index = (int(subnet.network_address) - int(network.network_address)) >> 32-resolution
-        x, y = IP_vizualizator.hilbert_i_to_xy(index, hilbert_order)
-        
-        pixels.append({"y": y, "x": x, "Val": value, "Network": str(subnet)})
-                    
 
-    response["Pixels"] = pixels
-    response["Max_value"] = max_value
-    response["Min_value"] = min_value
-    response["Hilbert_order"] = hilbert_order
-    
+        index = (int(subnet.network_address) - int(network.network_address)) >> 32 - resolution
+        x, y = dataset.hilbert_i_to_xy(index, hilbert_order)
+
+        pixels.append({"y": y, "x": x, "val": value, "ip": str(subnet)})
+
+    response["pixels"] = pixels
+    response["max_value"] = max_value
+    response["min_value"] = min_value
+    response["hilbert_order"] = hilbert_order
+
     return response, 200
 
 
-def apikey_auth(token, required_scopes):
-    user = CONFIG["api_tokens"].get(token, None)
+def create_new_user_api(user):
+    user = db.create_user(user["username"])
 
-    if not user:
+    return {"id": user.uid, "username": user.username, "authorization": user.authorization}, 200
+
+
+def delete_user_api(user):
+    db.delete_user(uid=user)
+
+    return {"status": 200}, 200
+
+
+def apikey_auth(token, required_scopes):
+    try:
+        user = db.find_user_by_authorization(token)
+    except NotFoundError:
         raise OAuthProblem("Invalid token")
 
-    return user
+    return {"uid": user.uid}
+
 
 #################################
+
+
 logging.basicConfig(level=logging.INFO)
-#app = connexion.App(__name__, specification_dir="./api/")
-#CORS(app.app)
-#app.add_api("api.yaml", arguments={"title": "IPVizualizator"})
+app = connexion.App(__name__, specification_dir="./api/")
+CORS(app.app)
+app.add_api("api.yaml", arguments={"title": "IPVizualizator"})
 db = RedisDB(CONFIG)
 
-
 if __name__ == "__main__":
-    #app.run(port=CONFIG["app"]["port"])
-
+    app.run(port=CONFIG["app"]["port"])

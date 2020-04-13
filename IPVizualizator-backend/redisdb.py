@@ -71,6 +71,45 @@ class Dataset:
         for key, val in records.items():
             self.ip_records.append(IPRecord(key.decode("UTF-8"), val))
 
+    def hilbert_i_to_xy(self, ix, order):
+        state = 0
+        x = 0
+        y = 0
+
+        for it in range(2 * order - 2, -2, -2):
+            row = 4 * state | ((ix >> it) & 3)
+            x = (x << 1) | ((0x936C >> row) & 1)
+            y = (y << 1) | ((0x39C6 >> row) & 1)
+            state = (0x3E6B94C1 >> 2 * row) & 3
+
+        return x, y
+
+    def size(self):
+        return len(self.ip_records)
+
+    def get_network(self, network):
+        value = 0.0
+
+        for ip_record in self.ip_records:
+            if ip_record.ip in network:
+                value += ip_record.value
+
+        return value
+
+    def get_networks(self, network, resolution):
+        subnets = {}
+
+        for subnet in network.subnets(new_prefix=resolution):
+            subnets[subnet] = 0.0
+
+        for ip_record in self.ip_records:
+            if ip_record.ip in network:
+                ip = (int(ip_record.ip) >> 32-resolution) << 32-resolution
+                index = IPv4Network((ip, resolution))
+                subnets[index] += ip_record.value
+
+        return subnets
+
     def __str__(self):
         string = "Dataset: {}, IPs : [".format(self.metadata)
         for ip in self.ip_records:
@@ -192,7 +231,7 @@ class RedisDB:
             pipe.sadd("{}:{}".format(self.dataset_owned_prefix, user.uid), token)
             pipe.set("{}:{}".format(self.dataset_owner_prefix, token), user.uid)
             for ip in ips:
-                pipe.hset("{}:{}".format(self.dataset_prefix, token), ip["ip"], ip["val"])
+                pipe.hset("{}:{}".format(self.dataset_prefix, token), str(ip["ip"]), ip["value"])
             pipe.execute()
 
         time = datetime.datetime.utcnow()
@@ -201,6 +240,31 @@ class RedisDB:
         self.set_dataset_viewed(token, time)
 
         return DatasetMetadata(token, user, len(ip), time, time, time)
+
+    def update_dataset(self, token, ips, update="set", delete_old_records=False):
+        if delete_old_records is True:
+            self.db.delete("{}:{}".format(self.dataset_prefix, token))
+
+        if update == "incr":
+            for ip in ips:
+                self.update_ip_record(token, str(ip["ip"]), ip["value"], update="incr")
+        elif update == "decr":
+            for ip in ips:
+                self.update_ip_record(token, str(ip["ip"]), ip["value"], update="decr")
+        else:
+            with self.db.pipeline() as pipe:
+                for ip in ips:
+                    pipe.hset("{}:{}".format(self.dataset_prefix, token), str(ip["ip"]), ip["value"])
+                pipe.execute()
+
+        time = datetime.datetime.utcnow()
+        self.set_dataset_updated(token, time)
+        self.set_dataset_viewed(token, time)
+
+        uid = self.db.get("{}:{}".format(self.dataset_owner_prefix, token)).decode("UTF-8")
+        user = self.find_user_by_uid(uid)
+
+        return DatasetMetadata(token, user, len(ip), self.get_dataset_created(token), time, time)
 
     def delete_dataset(self, token):
         uid = self.db.get("{}:{}".format(self.dataset_owner_prefix, token)).decode("UTF-8")
@@ -250,6 +314,10 @@ class RedisDB:
 
     def get_ip_record(self, token, ip):
         value = self.db.hget("{}:{}".format(self.dataset_prefix, token), str(ip))
+
+        if value is None:
+            value = b'0'
+
         self.set_dataset_viewed(token, datetime.datetime.utcnow())
 
         return IPRecord(ip, value)
@@ -262,11 +330,18 @@ class RedisDB:
         self.set_dataset_viewed(token, time)
 
     def update_ip_record(self, token, ip, value, update="set"):
+        ip = str(ip)
         if update == "incr":
-            ip_record = self.get_ip_record(token, ip)
+            if self.ip_record_exist(token, ip):
+                ip_record = self.get_ip_record(token, ip)
+            else:
+                ip_record = IPRecord(ip, b'0')
             ip_record = self.set_ip_record(token, ip, float(value) + ip_record.value)
         elif update == "decr":
-            ip_record = self.get_ip_record(token, ip)
+            if self.ip_record_exist(token, ip):
+                ip_record = self.get_ip_record(token, ip)
+            else:
+                ip_record = IPRecord(ip, b'0')
             ip_record = self.set_ip_record(token, ip, ip_record.value - float(value))
         else:
             ip_record = self.set_ip_record(token, ip, value)
