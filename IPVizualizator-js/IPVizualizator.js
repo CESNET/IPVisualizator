@@ -3,6 +3,7 @@ class IPVizualizator {
     constructor(args) {
         this.canvas_height = args.height;
         this.canvas_width = args.width;
+        this.token = args.token;
         this.canvas = d3.select(args.canvas).append('canvas').classed('mainCanvas', true).attr('width', this.canvas_width).attr('height', this.canvas_height);
         this.canvas_context = this.canvas.node().getContext('2d');
         var customBase = document.createElement("custom");
@@ -11,7 +12,6 @@ class IPVizualizator {
         this.network = args.network;
         this.mask = args.mask;
         this.resolution = args.resolution;
-        this.test_mode = args.test_mode;
         this.bordered_pixel = 'bordered_pixel' in args ? args.bordered_pixel : true;
 
         this.network_data = {};
@@ -33,16 +33,16 @@ class IPVizualizator {
         this.network = network;
     }
     
+    set_token(token) {
+        this.token = token;
+    }
+    
     set_mask(mask) {
         this.mask = parseInt(mask);
     }
     
     set_resolution(resolution) {
         this.resolution = parseInt(resolution);
-    }
-    
-    set_test_mode(test) {
-        this.test_mode = test;
     }
     
     set_network_data(network_data) {
@@ -54,7 +54,7 @@ class IPVizualizator {
     }
 
     create_api_call_url() {
-        return this.api + "/network/" + this.network + "/" + this.mask +"?resolution=" + this.resolution + "&test=" + this.test_mode;
+        return this.api + "/vizualizator/" + this.token + "/map/" + this.network + "/" + this.mask +"?resolution=" + this.resolution;
     }
 
     genColor() {
@@ -80,13 +80,13 @@ class IPVizualizator {
     }
 
     databind() {
-        this.color_map.domain([parseFloat(this.network_data.Min_value), parseFloat(this.network_data.Max_value)]);
+        this.color_map.domain([parseFloat(this.network_data.min_value), parseFloat(this.network_data.max_value)]);
         
-        const pixel_width = Math.ceil(this.canvas_width / Math.sqrt(this.network_data.Pixels.length));
-        const pixel_height = Math.ceil(this.canvas_height / Math.sqrt(this.network_data.Pixels.length));
+        const pixel_width = Math.ceil(this.canvas_width / Math.sqrt(this.network_data.pixels.length));
+        const pixel_height = Math.ceil(this.canvas_height / Math.sqrt(this.network_data.pixels.length));
 
 
-        var pixels = this.custom.selectAll("custom.rect").data(this.network_data.Pixels);
+        var pixels = this.custom.selectAll("custom.rect").data(this.network_data.pixels);
 
         pixels
             .exit()
@@ -101,7 +101,7 @@ class IPVizualizator {
             .attr("width", pixel_width)
             .attr("height", pixel_height)
             .attr("fillStyle", d => { 
-                var val = parseFloat(d.Val)
+                var val = parseFloat(d.val)
                 return val == 0 ? "#000000" : this.color_map(val);
             })
             .attr("fillStyleHidden", d => { 
@@ -128,7 +128,7 @@ class IPVizualizator {
                 return d.y * pixel_height;
             })
             .attr("fillStyle", d => { 
-                var val = parseFloat(d.Val)
+                var val = parseFloat(d.val)
                 return val == 0 ? "#000000" : this.color_map(val);
             })
             .attr("fillStyleHidden", d => { 
@@ -179,8 +179,8 @@ class IPVizualizator {
     }
 
     zoom(d) {
-        this.network = d.Network.split("/")[0];
-        this.mask = d.Network.split("/")[1];
+        this.network = d.ip.split("/")[0];
+        this.mask = d.ip.split("/")[1];
         this.resolution = this.resolution + 8 <= 32 ? this.resolution + 8: 32;
         
         this.update();
@@ -207,7 +207,7 @@ class IPVizualizator {
 					.style('opacity', 0.8)
 					.style('top', d3.event.pageY + 5 + 'px')
 					.style('left', d3.event.pageX + 5 + 'px')
-					.html("<b>Network:</b> " + pixelData.Network + "<br /><b>Value:</b> " + pixelData.Val );
+					.html("<b>Network:</b> " + pixelData.ip + "<br /><b>Value:</b> " + pixelData.val );
 
 			} else {
 
