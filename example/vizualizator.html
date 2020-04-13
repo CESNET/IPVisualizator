@@ -16,22 +16,22 @@
         <center><h1 class="display-4">IP vizualizator</h1></center>
         <form>
             <div class="form-group">
+                <label for="token">Dataset token</label>
+                <input type="text" class="form-control" id="token" value="5MC5TjetQf_Fu3Kjke_-2A">
+            </div>
+            <div class="form-group">
                 <label for="network">Network</label>
-                <input type="text" class="form-control" id="network" placeholder="0.0.0.0">
+                <input type="text" class="form-control" id="network" value="0.0.0.0">
             </div>
             <div class="form-group">
                 <label for="mask">Mask</label>
-                <input type="number" class="form-control" id="mask" placeholder="0">
+                <input type="number" class="form-control" id="mask" value="0">
             </div>
             <div class="form-group">
                 <label for="resolution">Resolution</label>
-                <input type="number" class="form-control" id="resolution" placeholder="16">
+                <input type="number" class="form-control" id="resolution" value="16">
                 <small id="res-help" class="form-text text-muted">Mask of the subnet which results in 1px - not mandatory</small>
 
-            </div>
-            <div class="form-group form-check">
-                <input type="checkbox" class="form-check-input" id="test">
-                <label class="form-check-label" for="test">Random values for testing</label>
             </div>
             <button type="button" id="form-send"  class="btn btn-primary">Show</button>
         </form>
@@ -54,6 +54,7 @@
             "height": "800",
             "width": "800",
             "api": "http://127.0.0.1:8080/api/v1",
+            "token": "VZAnRgnUXQ0w5910fqYQVQ",
             "network": "147.32.0.0",
             "mask": 16,
             "resolution": 24,
@@ -63,16 +64,15 @@
 
         $(document).ready(function(){
             $("#form-send").click(function(){
+                token = $("#token").val();
                 network = $("#network").val(); 
                 mask = $("#mask").val(); 
                 resolution = $("#resolution").val();
-                testing = false;
-                if($("#test").is(":checked")) testing = true;
 
+                vizualizator.set_token(token);
                 vizualizator.set_network(network);
                 vizualizator.set_mask(mask);
                 vizualizator.set_resolution(resolution);
-                vizualizator.set_test_mode(testing);
                 vizualizator.update();
             }); 
         }); 
