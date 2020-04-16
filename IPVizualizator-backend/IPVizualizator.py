@@ -14,6 +14,7 @@ from flask_cors import CORS
 from flask import Response
 import yaml
 import json
+import numpy as np
 import re
 from jsonschema import draft4_format_checker
 
@@ -260,7 +261,7 @@ def get_map_api(token, network, mask, resolution=None):
         max_value = - math.inf
         min_value = math.inf
         first = True
-        for subnet, value in networks_data.items():
+        for index, value in enumerate(networks_data):
             if first is True:
                 first = False
             else:
@@ -268,16 +269,17 @@ def get_map_api(token, network, mask, resolution=None):
 
             min_value = value if value < min_value else min_value
             max_value = value if value > max_value else max_value
-            subnet = IPv4Network(subnet)
-            index = (int(subnet.network_address) - int(network.network_address)) >> 32 - resolution
+            #subnet = IPv4Network(subnet)
+            #index = (int(subnet.network_address) - int(network.network_address)) >> 32 - resolution
             x, y = dataset.hilbert_i_to_xy(index, order)
 
-            yield json.dumps({"y": y, "x": x, "val": value, "ip": str(subnet)})
+            yield json.dumps({"y": y, "x": x, "val": value, "ip": "{}/{}".format(str(network.network_address+(index << 32-resolution)),str(resolution))})
 
         yield '],'
         yield '"max_value": {},'.format(max_value)
         yield '"min_value": {},'.format(min_value)
         yield '"hilbert_order": {}}}'.format(hilbert_order)
+        logging.info("hotovo hilbertovu mapu: {}".format(datetime.datetime.utcnow()))
 
     return Response(generate(response, networks, hilbert_order), status=200, mimetype='application/json')
 
