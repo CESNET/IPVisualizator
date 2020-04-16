@@ -44,7 +44,7 @@ paths:
           description: "IPs and their values"
           required: true
           schema:
-            $ref: "#/definitions/Vizualizator"
+            type: "string"
       responses:
         200:
           description: "Successful operation"
@@ -57,7 +57,7 @@ paths:
         401:
           $ref: '#/responses/UnauthorizedError'
       consumes:
-        - "application/json"
+        - "text/plain"
       produces:
         - "application/json"
       security:
@@ -78,7 +78,7 @@ paths:
         description: "IPs and their values"
         required: true
         schema:
-          $ref: "#/definitions/Vizualizator"
+          type: "string"
       responses:
         200:
           description: "Successful operation"
@@ -93,7 +93,7 @@ paths:
         401:
           $ref: '#/responses/UnauthorizedError'
       consumes:
-       - "application/json"
+       - "text/plain"
       produces:
       - "application/json"
       security:
@@ -113,7 +113,7 @@ paths:
         description: "IPs and their values"
         required: true
         schema:
-          $ref: "#/definitions/Vizualizator"
+          type: "string"
       - name: "incr"
         in: "query"
         description: "IP value will be incremented by this value"
@@ -136,7 +136,7 @@ paths:
         401:
           $ref: '#/responses/UnauthorizedError'
       consumes:
-       - "application/json"
+       - "text/plain"
       produces:
       - "application/json"
       security:

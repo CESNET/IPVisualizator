@@ -6,9 +6,10 @@ RedisDB - class for communication with redis
 import sys
 import random
 import secrets
-import math
+import functools 
 import logging
 import datetime
+from itertools import islice
 from ipaddress import IPv4Address, IPv4Network, AddressValueError
 import redis
 
@@ -108,15 +109,18 @@ class Dataset:
         for subnet in network.subnets(new_prefix=resolution):
             subnets[str(subnet)] = 0.0
 
-        logging.info("pripravuji networks: {}".format(datetime.datetime.utcnow()))
+        logging.info("hotovo networks: {}".format(datetime.datetime.utcnow()))
+        network_integer = int(network.network_address)
         for key, val in self.ip_records.items():
-            ip = IPv4Address(key.decode("UTF-8"))
-            if ip in network:
-                ip = (int(ip) >> 32-resolution) << 32-resolution
+            ip = functools.reduce(lambda out, x: (out << 8) + int(x), key.decode("UTF-8").split('.'), 0)
+            ip_network = (ip >> 32 - network.prefixlen) << 32 - network.prefixlen
+            if network_integer == ip_network:
+                ip = (ip >> 32-resolution) << 32-resolution
                 index = str(IPv4Network((ip, resolution)))
+                #index = "147.32.0.0/16"
                 subnets[index] += float(val.decode("UTF-8"))
 
-        logging.info("hotovo networks: {}".format(datetime.datetime.utcnow()))
+        logging.info("hotovo subnets: {}".format(datetime.datetime.utcnow()))
         return subnets
 
     def __str__(self):
@@ -230,25 +234,33 @@ class RedisDB:
         else:
             return False
 
+    def chunks(self, data, size=10000):
+        it = iter(data)
+        for i in range(0, len(data), size):
+            yield {k: data[k] for k in islice(it, size)}
+
     def create_dataset(self, ips, user):
         token = secrets.token_urlsafe(nbytes=16)
         while self.db.sismember(self.dataset_key, token):
             token = secrets.token_urlsafe(nbytes=16)
 
+        logging.info("pred pipeline: {}".format(datetime.datetime.utcnow()))
         with self.db.pipeline() as pipe:
             pipe.sadd(self.dataset_key, token)
             pipe.sadd("{}:{}".format(self.dataset_owned_prefix, user.uid), token)
             pipe.set("{}:{}".format(self.dataset_owner_prefix, token), user.uid)
-            for ip in ips:
-                pipe.hset("{}:{}".format(self.dataset_prefix, token), str(ip["ip"]), ip["value"])
+            for record in self.chunks(ips, 50000):
+                pipe.hset("{}:{}".format(self.dataset_prefix, token), mapping=record)
+            logging.info("pred execute: {}".format(datetime.datetime.utcnow()))
             pipe.execute()
+            logging.info("po execute: {}".format(datetime.datetime.utcnow()))
 
         time = datetime.datetime.utcnow()
         self.set_dataset_created(token, time)
         self.set_dataset_updated(token, time)
         self.set_dataset_viewed(token, time)
 
-        return DatasetMetadata(token, user, len(ip), time, time, time)
+        return DatasetMetadata(token, user, len(ips), time, time, time)
 
     def update_dataset(self, token, ips, update="set", delete_old_records=False):
         if delete_old_records is True:

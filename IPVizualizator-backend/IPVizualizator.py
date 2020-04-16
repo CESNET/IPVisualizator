@@ -14,6 +14,8 @@ from flask_cors import CORS
 from flask import Response
 import yaml
 import json
+import re
+from jsonschema import draft4_format_checker
 
 from redisdb import RedisDB, NotFoundError
 
@@ -34,32 +36,60 @@ with open(CONFIG_FILE, 'r') as data:
 # Helpers
 
 
-def validate_ip_data(records):
-    temp_records = []
 
-    for record in records:
-        ip = IPv4Address(record["ip"])
-        value = float(record["val"])
+IP_RE = re.compile("^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
 
-        temp_records.append({"ip": ip, "value": value})
+@draft4_format_checker.checks("ip")
+def is_ip(val):
+    if not isinstance(val, str):
+                    return True
+    return IP_RE.match(val) is not None
+
+
+def convert_ip_data_from_csv(records):
+    temp_records = {}
+
+    for record in records.splitlines():
+        record = record.decode().strip()
+
+        if record[0] == "#":
+            continue
+        record = record.split(',')
+
+        if len(record) != 2:
+            raise ValueError
+
+        if IP_RE.match(record[0]) is None:
+            raise ValueError
+
+        ip = record[0]
+        value = float(record[1])
+
+        temp_records[ip] = value
 
     return temp_records
-
 
 #################################
 # API
 
 
 def create_new_dataset_api(user, records):
-    try:
-        records = validate_ip_data(records["ips"])
-    except ValueError:
-        return {"status": 400, "detail": "Some IP or value is invalid."}, 400
+    logging.info("zacatek: {}".format(datetime.datetime.utcnow()))
 
+    try:
+        records = convert_ip_data_from_csv(records)
+    except ValueError:
+        return {"status": 400, "detail": "CSV format, some IP or value is invalid."}, 400
+
+    if len(records) == 0:
+        return {"status": 400, "detail": "No data provided."}, 400
+
+    logging.info("zpracovano csv: {}".format(datetime.datetime.utcnow()))
     user = db.find_user_by_uid(user)
     dataset = db.create_dataset(records, user)
 
     return {"status": 200, "token": dataset.token}, 200
+
 
 
 def update_dataset_api(user, token, records):
@@ -72,9 +102,13 @@ def update_dataset_api(user, token, records):
         return {"status": 401, "detail": "User doesn't have a permission to manipulate with this dataset"}, 401
 
     try:
-        records = validate_ip_data(records["ips"])
+        records = convert_ip_data_from_csv(records)
     except ValueError:
-        return {"status": 400, "detail": "Some IP or value is invalid."}, 400
+        return {"status": 400, "detail": "CSV format, some IP or value is invalid."}, 400
+
+    if len(records) == 0:
+        return {"status": 400, "detail": "No data provided."}, 400
+
     dataset = db.update_dataset(token, records, delete_old_records=True)
 
     return {"status": 200}, 200
@@ -90,9 +124,12 @@ def patch_dataset_api(user, token, records, incr=False, decr=False, ):
         return {"status": 401, "detail": "User doesn't have a permission to manipulate with this dataset"}, 401
 
     try:
-        records = validate_ip_data(records["ips"])
+        records = convert_ip_data_from_csv(records)
     except ValueError:
-        return {"status": 400, "detail": "Some IP or value is invalid."}, 400
+        return {"status": 400, "detail": "CSV format, some IP or value is invalid."}, 400
+
+    if len(records) == 0:
+        return {"status": 400, "detail": "No data provided."}, 400
 
     if incr is True:
         dataset = db.update_dataset(token, records, update="incr", delete_old_records=False)
