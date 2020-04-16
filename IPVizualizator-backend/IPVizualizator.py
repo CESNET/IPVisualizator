@@ -6,13 +6,14 @@ IPVizualizator Backend
 import sys
 import connexion
 from connexion.exceptions import OAuthProblem
-import random
+import datetime
 import math
 import logging
 from ipaddress import IPv4Address, IPv4Network, AddressValueError
 from flask_cors import CORS
-from flask import g
+from flask import Response
 import yaml
+import json
 
 from redisdb import RedisDB, NotFoundError
 
@@ -27,6 +28,7 @@ with open(CONFIG_FILE, 'r') as data:
     except yaml.YAMLError as exc:
         print(exc)
         sys.exit(1)
+
 
 #################################
 # Helpers
@@ -43,6 +45,7 @@ def validate_ip_data(records):
 
     return temp_records
 
+
 #################################
 # API
 
@@ -56,7 +59,7 @@ def create_new_dataset_api(user, records):
     user = db.find_user_by_uid(user)
     dataset = db.create_dataset(records, user)
 
-    return {"status": 200, "token": dataset.token }, 200
+    return {"status": 200, "token": dataset.token}, 200
 
 
 def update_dataset_api(user, token, records):
@@ -77,7 +80,7 @@ def update_dataset_api(user, token, records):
     return {"status": 200}, 200
 
 
-def patch_dataset_api(user, token, records, incr=False, decr=False,):
+def patch_dataset_api(user, token, records, incr=False, decr=False, ):
     if db.dataset_exist(token) is False:
         return {"status": 404, "detail": "Dataset not found"}, 404
 
@@ -153,7 +156,7 @@ def delete_ip_api(user, token, ip):
     return {"status": 200}, 200
 
 
-def put_ip_api(user, token, ip, value, incr=False, decr=False,):
+def put_ip_api(user, token, ip, value, incr=False, decr=False, ):
     if db.dataset_exist(token) is False:
         return {"status": 404, "detail": "Dataset not found"}, 404
 
@@ -203,31 +206,43 @@ def get_map_api(token, network, mask, resolution=None):
             return {"status": 400,
                     "detail": "Resolution is invalid - not even or less than given mask or greater than 32."}, 400
 
-    response = {"status": 200, "network": str(network.network_address), "mask": str(network.netmask),
-                "prefix_length": network.prefixlen, "min_address": str(network.network_address),
-                "max_address": str(network.broadcast_address), "pixel_mask": resolution}
-    max_value = - math.inf
-    min_value = math.inf
-    pixels = []
+    response = '{{"status": 200, "network": "{}", "mask": "{}", "prefix_length": {}, "min_address": "{}", ' \
+               '"max_address": "{}", "pixel_mask": {}'.format(str(network.network_address),
+                                                               str(network.netmask), network.prefixlen,
+                                                               str(network.network_address),
+                                                               str(network.broadcast_address), resolution)
 
     hilbert_order = int((resolution - network.prefixlen) / 2)
     dataset = db.get_dataset(token)
+    networks = dataset.get_networks(network, resolution)
+    logging.info("pripravuji hilbertovu mapu: {}".format(datetime.datetime.utcnow()))
 
-    for subnet, value in dataset.get_networks(network, resolution).items():
-        min_value = value if value < min_value else min_value
-        max_value = value if value > max_value else max_value
+    def generate(start, networks_data, order):
+        yield start
+        yield ',"pixels": ['
+        max_value = - math.inf
+        min_value = math.inf
+        first = True
+        for subnet, value in networks_data.items():
+            if first is True:
+                first = False
+            else:
+                yield ','
 
-        index = (int(subnet.network_address) - int(network.network_address)) >> 32 - resolution
-        x, y = dataset.hilbert_i_to_xy(index, hilbert_order)
+            min_value = value if value < min_value else min_value
+            max_value = value if value > max_value else max_value
+            subnet = IPv4Network(subnet)
+            index = (int(subnet.network_address) - int(network.network_address)) >> 32 - resolution
+            x, y = dataset.hilbert_i_to_xy(index, order)
 
-        pixels.append({"y": y, "x": x, "val": value, "ip": str(subnet)})
+            yield json.dumps({"y": y, "x": x, "val": value, "ip": str(subnet)})
 
-    response["pixels"] = pixels
-    response["max_value"] = max_value
-    response["min_value"] = min_value
-    response["hilbert_order"] = hilbert_order
+        yield '],'
+        yield '"max_value": {},'.format(max_value)
+        yield '"min_value": {},'.format(min_value)
+        yield '"hilbert_order": {}}}'.format(hilbert_order)
 
-    return response, 200
+    return Response(generate(response, networks, hilbert_order), status=200, mimetype='application/json')
 
 
 def create_new_user_api(user):
@@ -259,6 +274,8 @@ app = connexion.App(__name__, specification_dir="./api/")
 CORS(app.app)
 app.add_api("api.yaml", arguments={"title": "IPVizualizator"})
 db = RedisDB(CONFIG)
+
+application = app.app
 
 if __name__ == "__main__":
     app.run(port=CONFIG["app"]["port"])

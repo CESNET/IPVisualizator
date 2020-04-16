@@ -67,9 +67,12 @@ class DatasetMetadata:
 class Dataset:
     def __init__(self, metadata, records):
         self.metadata = metadata
-        self.ip_records = []
-        for key, val in records.items():
-            self.ip_records.append(IPRecord(key.decode("UTF-8"), val))
+        #self.ip_records = []
+        self.ip_records = records
+        logging.info("pripravuji dataset: {}".format(datetime.datetime.utcnow()))
+        #for key, val in records.items():
+        #    self.ip_records.append(IPRecord(key.decode("UTF-8"), val))
+        logging.info("hotovy dataset: {}".format(datetime.datetime.utcnow()))
 
     def hilbert_i_to_xy(self, ix, order):
         state = 0
@@ -90,24 +93,30 @@ class Dataset:
     def get_network(self, network):
         value = 0.0
 
-        for ip_record in self.ip_records:
-            if ip_record.ip in network:
-                value += ip_record.value
+        for key, val in self.ip_records.items():
+            ip = IPv4Address(key.decode("UTF-8"))
+            if ip in network:
+                value += float(val.decode("UTF-8"))
 
         return value
 
     def get_networks(self, network, resolution):
         subnets = {}
 
+        logging.info("pripravuji networks: {}".format(datetime.datetime.utcnow()))
+        # TODO neefektivni, delat jinak?
         for subnet in network.subnets(new_prefix=resolution):
-            subnets[subnet] = 0.0
+            subnets[str(subnet)] = 0.0
 
-        for ip_record in self.ip_records:
-            if ip_record.ip in network:
-                ip = (int(ip_record.ip) >> 32-resolution) << 32-resolution
-                index = IPv4Network((ip, resolution))
-                subnets[index] += ip_record.value
+        logging.info("pripravuji networks: {}".format(datetime.datetime.utcnow()))
+        for key, val in self.ip_records.items():
+            ip = IPv4Address(key.decode("UTF-8"))
+            if ip in network:
+                ip = (int(ip) >> 32-resolution) << 32-resolution
+                index = str(IPv4Network((ip, resolution)))
+                subnets[index] += float(val.decode("UTF-8"))
 
+        logging.info("hotovo networks: {}".format(datetime.datetime.utcnow()))
         return subnets
 
     def __str__(self):
@@ -279,9 +288,11 @@ class RedisDB:
             pipe.execute()
 
     def get_dataset(self, token):
+        logging.info("pripravuji redis: {}".format(datetime.datetime.utcnow()))
         data = self.db.hgetall("{}:{}".format(self.dataset_prefix, token))
         metadata = self.get_dataset_metadata(token)
         self.set_dataset_viewed(token, datetime.datetime.utcnow())
+        logging.info("hotovo redis: {}".format(datetime.datetime.utcnow()))
 
         return Dataset(metadata, data)
 
