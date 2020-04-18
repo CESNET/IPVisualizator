@@ -251,22 +251,23 @@ def get_map_api(token, network, mask, resolution=None):
                                                                str(network.broadcast_address), resolution)
 
     hilbert_order = int((resolution - network.prefixlen) / 2)
-    dataset = db.get_dataset(token)
+    dataset = db.get_dataset(token, network, resolution)
     networks = dataset.get_networks(network, resolution)
     logging.info("pripravuji hilbertovu mapu: {}".format(datetime.datetime.utcnow()))
 
-    def generate(start, networks_data, order):
+    def generate(start, map_network, networks_data, order):
         yield start
         yield ',"pixels": ['
         max_value = - math.inf
         min_value = math.inf
-        first = True
+
+        round_p = float(10**5)
         for index, value in enumerate(networks_data):
-            if first is True:
-                first = False
-            else:
+            if index != 0:
                 yield ','
 
+            # faster rounding of value to 5 decimal digit
+            value = int(value * round_p + 0.5)/round_p
             min_value = value if value < min_value else min_value
             max_value = value if value > max_value else max_value
             #subnet = IPv4Network(subnet)
@@ -281,7 +282,7 @@ def get_map_api(token, network, mask, resolution=None):
         yield '"hilbert_order": {}}}'.format(hilbert_order)
         logging.info("hotovo hilbertovu mapu: {}".format(datetime.datetime.utcnow()))
 
-    return Response(generate(response, networks, hilbert_order), status=200, mimetype='application/json')
+    return Response(generate(response, network, networks, hilbert_order), status=200, mimetype='application/json')
 
 
 def create_new_user_api(user):

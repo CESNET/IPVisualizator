@@ -67,13 +67,20 @@ class DatasetMetadata:
 
 
 class Dataset:
-    def __init__(self, metadata, records):
+    def __init__(self, metadata, records=None, cache=None):
         self.metadata = metadata
         self.ip_records = {}
-        #self.ip_records = records
+        self.cache = None
+
         logging.info("pripravuji dataset: {}".format(datetime.datetime.utcnow()))
-        for key, val in records.items():
-            self.ip_records[key.decode("UTF-8")] = float(val.decode("UTF-8"))
+        if cache is not None:
+            self.cache = {}
+            for key, val in cache.items():
+                self.cache[int(key.decode("UTF-8"))] = float(val.decode("UTF-8"))
+        else:
+            #self.ip_records = records
+            for key, val in records.items():
+                self.ip_records[key.decode("UTF-8")] = float(val.decode("UTF-8"))
         logging.info("hotovy dataset: {}".format(datetime.datetime.utcnow()))
 
     def hilbert_i_to_xy(self, ix, order):
@@ -106,21 +113,24 @@ class Dataset:
         subnets = {}
 
         logging.info("pripravuji networks: {}".format(datetime.datetime.utcnow()))
-        # TODO neefektivni, delat jinak?
         subnets = np.zeros(2**(resolution-network.prefixlen))
-        #for subnet in network.subnets(new_prefix=resolution):
-        #    subnets[str(subnet)] = 0.0
 
         logging.info("hotovo networks: {}".format(datetime.datetime.utcnow()))
         network_integer = int(network.network_address)
-        for key, val in self.ip_records.items():
-            ip = functools.reduce(lambda out, x: (out << 8) + int(x), key.split('.'), 0)
+        if self.cache is not None:
+            data = self.cache
+        else:
+            data = self.ip_records
+        for key, val in data.items():
+            if self.cache is not None:
+                ip = key
+                ip = ip << 16
+            else:
+                ip = functools.reduce(lambda out, x: (out << 8) + int(x), key.split('.'), 0)
             ip_network = (ip >> 32 - network.prefixlen) << 32 - network.prefixlen
             if network_integer == ip_network:
                 ip = (ip >> 32-resolution) << 32-resolution
                 index = (ip-network_integer) >> 32 - resolution
-                #index = str(IPv4Network((ip, resolution)))
-                #index = "147.32.0.0/16"
                 subnets[index] += val
 
         logging.info("hotovo subnets: {}".format(datetime.datetime.utcnow()))
@@ -153,6 +163,7 @@ class RedisDB:
         self.user_tokens_key = "{}:user_authorization".format(self.prefix)
         self.user_prefix = "{}:user".format(self.prefix)
         self.dataset_prefix = "{}:dataset".format(self.prefix)
+        self.dataset_cache_prefix = "{}:dataset_cache".format(self.prefix)
         self.dataset_key = "{}:datasets".format(self.prefix)
         self.dataset_owned_prefix = "{}:dataset_owned".format(self.prefix)
         self.dataset_owner_prefix = "{}:dataset_owner".format(self.prefix)
@@ -247,13 +258,28 @@ class RedisDB:
         while self.db.sismember(self.dataset_key, token):
             token = secrets.token_urlsafe(nbytes=16)
 
+        #Uprava dat
+        dataset_cache = {}
+        dataset_subnets = []
+        for i in range(0, 65535):
+            dataset_subnets.append({})
+            dataset_cache[i] = 0.0
+
+        for ip, value in ips.items():
+            ip_index = functools.reduce(lambda out, x: (out << 8) + int(x), ip.split('.'), 0) >> 16
+            dataset_cache[ip_index] += value
+            dataset_subnets[ip_index][ip] = value
+
         logging.info("pred pipeline: {}".format(datetime.datetime.utcnow()))
         with self.db.pipeline() as pipe:
             pipe.sadd(self.dataset_key, token)
             pipe.sadd("{}:{}".format(self.dataset_owned_prefix, user.uid), token)
             pipe.set("{}:{}".format(self.dataset_owner_prefix, token), user.uid)
-            for record in self.chunks(ips, 50000):
-                pipe.hset("{}:{}".format(self.dataset_prefix, token), mapping=record)
+            pipe.hmset("{}:{}".format(self.dataset_cache_prefix, token), mapping=dataset_cache)
+            for i in range(0, 65535):
+                if len(dataset_subnets[i]) != 0:
+                    for record in self.chunks(dataset_subnets[i], 10000):
+                        pipe.hmset("{}:{}:{}".format(self.dataset_prefix, token, i), mapping=record)
             logging.info("pred execute: {}".format(datetime.datetime.utcnow()))
             pipe.execute()
             logging.info("po execute: {}".format(datetime.datetime.utcnow()))
@@ -269,6 +295,7 @@ class RedisDB:
         if delete_old_records is True:
             self.db.delete("{}:{}".format(self.dataset_prefix, token))
 
+        #TODO neefektivni
         if update == "incr":
             for ip in ips:
                 self.update_ip_record(token, str(ip["ip"]), ip["value"], update="incr")
@@ -302,14 +329,34 @@ class RedisDB:
             pipe.delete("{}:{}".format(self.dataset_prefix, token))
             pipe.execute()
 
-    def get_dataset(self, token):
+    def get_dataset(self, token, network, resolution):
         logging.info("pripravuji redis: {}".format(datetime.datetime.utcnow()))
-        data = self.db.hgetall("{}:{}".format(self.dataset_prefix, token))
-        metadata = self.get_dataset_metadata(token)
-        self.set_dataset_viewed(token, datetime.datetime.utcnow())
-        logging.info("hotovo redis: {}".format(datetime.datetime.utcnow()))
+        if resolution <= 16:
+            data = self.db.hgetall("{}:{}".format(self.dataset_cache_prefix, token))
+            metadata = self.get_dataset_metadata(token)
+            self.set_dataset_viewed(token, datetime.datetime.utcnow())
+            logging.info("hotovo redis: {}".format(datetime.datetime.utcnow()))
 
-        return Dataset(metadata, data)
+            return Dataset(metadata, cache=data)
+        else:
+            data = {}
+            if network.prefixlen >= 16:
+                index = int(network.network_address) >> 16
+                key = "{}:{}:{}".format(self.dataset_prefix, token, index)
+                if self.db.exists(key) == 1:
+                    data = self.db.hgetall(key)
+            else:
+                subnets = network.subnets(new_prefix=16)
+                for subnet in subnets:
+                    key = "{}:{}:{}".format(self.dataset_prefix, token, int(subnet.network_address) >> 16)
+                    if self.db.exists(key):
+                        data.update(self.db.hgetall(key))
+
+            metadata = self.get_dataset_metadata(token)
+            self.set_dataset_viewed(token, datetime.datetime.utcnow())
+            logging.info("hotovo redis: {}".format(datetime.datetime.utcnow()))
+
+            return Dataset(metadata, records=data)
 
     def dataset_exist(self, token):
         return self.db.sismember(self.dataset_key, token)
