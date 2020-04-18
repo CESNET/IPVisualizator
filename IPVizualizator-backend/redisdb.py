@@ -12,6 +12,7 @@ import datetime
 from itertools import islice
 from ipaddress import IPv4Address, IPv4Network, AddressValueError
 import redis
+import numpy as np
 
 
 class NotFoundError(Exception):
@@ -68,11 +69,11 @@ class DatasetMetadata:
 class Dataset:
     def __init__(self, metadata, records):
         self.metadata = metadata
-        #self.ip_records = []
-        self.ip_records = records
+        self.ip_records = {}
+        #self.ip_records = records
         logging.info("pripravuji dataset: {}".format(datetime.datetime.utcnow()))
-        #for key, val in records.items():
-        #    self.ip_records.append(IPRecord(key.decode("UTF-8"), val))
+        for key, val in records.items():
+            self.ip_records[key.decode("UTF-8")] = float(val.decode("UTF-8"))
         logging.info("hotovy dataset: {}".format(datetime.datetime.utcnow()))
 
     def hilbert_i_to_xy(self, ix, order):
@@ -106,19 +107,21 @@ class Dataset:
 
         logging.info("pripravuji networks: {}".format(datetime.datetime.utcnow()))
         # TODO neefektivni, delat jinak?
-        for subnet in network.subnets(new_prefix=resolution):
-            subnets[str(subnet)] = 0.0
+        subnets = np.zeros(2**(resolution-network.prefixlen))
+        #for subnet in network.subnets(new_prefix=resolution):
+        #    subnets[str(subnet)] = 0.0
 
         logging.info("hotovo networks: {}".format(datetime.datetime.utcnow()))
         network_integer = int(network.network_address)
         for key, val in self.ip_records.items():
-            ip = functools.reduce(lambda out, x: (out << 8) + int(x), key.decode("UTF-8").split('.'), 0)
+            ip = functools.reduce(lambda out, x: (out << 8) + int(x), key.split('.'), 0)
             ip_network = (ip >> 32 - network.prefixlen) << 32 - network.prefixlen
             if network_integer == ip_network:
                 ip = (ip >> 32-resolution) << 32-resolution
-                index = str(IPv4Network((ip, resolution)))
+                index = (ip-network_integer) >> 32 - resolution
+                #index = str(IPv4Network((ip, resolution)))
                 #index = "147.32.0.0/16"
-                subnets[index] += float(val.decode("UTF-8"))
+                subnets[index] += val
 
         logging.info("hotovo subnets: {}".format(datetime.datetime.utcnow()))
         return subnets
