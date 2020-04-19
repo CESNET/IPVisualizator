@@ -110,7 +110,7 @@ def update_dataset_api(user, token, records):
     if len(records) == 0:
         return {"status": 400, "detail": "No data provided."}, 400
 
-    dataset = db.update_dataset(token, records, delete_old_records=True)
+    dataset = db.update_dataset(token, records, update="set")
 
     return {"status": 200}, 200
 
@@ -133,11 +133,11 @@ def patch_dataset_api(user, token, records, incr=False, decr=False, ):
         return {"status": 400, "detail": "No data provided."}, 400
 
     if incr is True:
-        dataset = db.update_dataset(token, records, update="incr", delete_old_records=False)
+        dataset = db.update_dataset(token, records, update="incr")
     elif decr is True:
-        dataset = db.update_dataset(token, records, update="decr", delete_old_records=False)
+        dataset = db.update_dataset(token, records, update="decr")
     else:
-        dataset = db.update_dataset(token, records, delete_old_records=False)
+        dataset = db.update_dataset(token, records, update="patch")
 
     return {"status": 200}, 200
 
@@ -244,45 +244,38 @@ def get_map_api(token, network, mask, resolution=None):
             return {"status": 400,
                     "detail": "Resolution is invalid - not even or less than given mask or greater than 32."}, 400
 
-    response = '{{"status": 200, "network": "{}", "mask": "{}", "prefix_length": {}, "min_address": "{}", ' \
-               '"max_address": "{}", "pixel_mask": {}'.format(str(network.network_address),
-                                                               str(network.netmask), network.prefixlen,
-                                                               str(network.network_address),
-                                                               str(network.broadcast_address), resolution)
+    response = {"status": 200, "network": str(network.network_address), "mask": str(network.netmask), "prefix_length": network.prefixlen, "min_address": str(network.network_address), "max_address": str(network.broadcast_address), "pixel_mask": resolution}
+
 
     hilbert_order = int((resolution - network.prefixlen) / 2)
     dataset = db.get_dataset(token, network, resolution)
     networks = dataset.get_networks(network, resolution)
     logging.info("pripravuji hilbertovu mapu: {}".format(datetime.datetime.utcnow()))
 
-    def generate(start, map_network, networks_data, order):
-        yield start
-        yield ',"pixels": ['
-        max_value = - math.inf
-        min_value = math.inf
+    max_value = - math.inf
+    min_value = math.inf
 
-        round_p = float(10**5)
-        for index, value in enumerate(networks_data):
-            if index != 0:
-                yield ','
+    round_p = float(10**5)
+    pixels = []
+    for index, value in enumerate(networks):
 
-            # faster rounding of value to 5 decimal digit
-            value = int(value * round_p + 0.5)/round_p
-            min_value = value if value < min_value else min_value
-            max_value = value if value > max_value else max_value
-            #subnet = IPv4Network(subnet)
-            #index = (int(subnet.network_address) - int(network.network_address)) >> 32 - resolution
-            x, y = dataset.hilbert_i_to_xy(index, order)
+        # faster rounding of value to 5 decimal digit
+        value = int(value * round_p + 0.5)/round_p
+        min_value = value if value < min_value else min_value
+        max_value = value if value > max_value else max_value
+        #subnet = IPv4Network(subnet)
+        #index = (int(subnet.network_address) - int(network.network_address)) >> 32 - resolution
+        x, y = dataset.hilbert_i_to_xy(index, hilbert_order)
 
-            yield json.dumps({"y": y, "x": x, "val": value, "ip": "{}/{}".format(str(network.network_address+(index << 32-resolution)),str(resolution))})
+        pixels.append({"y": y, "x": x, "val": value, "ip": "{}/{}".format(str(network.network_address+(index << 32-resolution)),str(resolution))})
 
-        yield '],'
-        yield '"max_value": {},'.format(max_value)
-        yield '"min_value": {},'.format(min_value)
-        yield '"hilbert_order": {}}}'.format(hilbert_order)
-        logging.info("hotovo hilbertovu mapu: {}".format(datetime.datetime.utcnow()))
+    response["pixels"] = pixels
+    response["max_value"] = max_value
+    response["min_value"] = min_value
+    response["hilbert_order"] = hilbert_order
 
-    return Response(generate(response, network, networks, hilbert_order), status=200, mimetype='application/json')
+    logging.info("hotovo hilbertovu mapu: {}".format(datetime.datetime.utcnow()))
+    return Response(json.dumps(response, separators=(',', ':')), status=200, mimetype='application/json')
 
 
 def create_new_user_api(user):

@@ -160,6 +160,7 @@ class RedisDB:
         self.user_prefix = "{}:user".format(self.prefix)
         self.dataset_prefix = "{}:dataset".format(self.prefix)
         self.dataset_cache_prefix = "{}:dataset_cache".format(self.prefix)
+        self.dataset_size_prefix = "{}:dataset_size".format(self.prefix)
         self.dataset_key = "{}:datasets".format(self.prefix)
         self.dataset_owned_prefix = "{}:dataset_owned".format(self.prefix)
         self.dataset_owner_prefix = "{}:dataset_owner".format(self.prefix)
@@ -254,7 +255,7 @@ class RedisDB:
         while self.db.sismember(self.dataset_key, token):
             token = secrets.token_urlsafe(nbytes=16)
 
-        #Uprava dat
+
         dataset_cache = {}
         dataset_subnets = []
         for i in range(0, 65535):
@@ -273,6 +274,7 @@ class RedisDB:
             pipe.sadd("{}:{}".format(self.dataset_owned_prefix, user.uid), token)
             pipe.set("{}:{}".format(self.dataset_owner_prefix, token), user.uid)
             pipe.hmset("{}:{}".format(self.dataset_cache_prefix, token), mapping=dataset_cache)
+            pipe.set("{}:{}".format(self.dataset_size_prefix, token), len(ips))
             for i in range(0, 65535):
                 if len(dataset_subnets[i]) != 0:
                     for record in self.chunks(dataset_subnets[i], 10000):
@@ -288,21 +290,41 @@ class RedisDB:
 
         return DatasetMetadata(token, user, len(ips), time, time, time)
 
-    def update_dataset(self, token, ips, update="set", delete_old_records=False):
-        if delete_old_records is True:
-            self.db.delete("{}:{}".format(self.dataset_prefix, token))
-
-        #TODO neefektivni
+    def update_dataset(self, token, ips, update="set"):
         if update == "incr":
-            for ip in ips:
-                self.update_ip_record(token, str(ip["ip"]), ip["value"], update="incr")
+            for ip, val in ips.items():
+                self.update_ip_record(token, ip, val, update="incr")
         elif update == "decr":
-            for ip in ips:
-                self.update_ip_record(token, str(ip["ip"]), ip["value"], update="decr")
+            for ip, val in ips.items():
+                self.update_ip_record(token, ip, val, update="decr")
+        elif update == "patch":
+            for ip, val in ips.items():
+                self.update_ip_record(token, ip, val, update="set")
         else:
+            self.db.set("{}:{}".format(self.dataset_size_prefix, token), len(ips))
+            self.db.delete("{}:{}".format(self.dataset_cache_prefix, token))
+
+            for key in self.db.scan_iter("{}:{}:*".format(self.dataset_prefix, token)):
+                self.db.delete(key)
+
+            dataset_cache = {}
+            dataset_subnets = []
+            for i in range(0, 65535):
+                dataset_subnets.append({})
+                dataset_cache[i] = 0.0
+
+            for ip, value in ips.items():
+                ip = functools.reduce(lambda out, x: (out << 8) + int(x), ip.split('.'), 0)
+                ip_index = ip >> 16
+                dataset_cache[ip_index] += value
+                dataset_subnets[ip_index][ip] = value
+
             with self.db.pipeline() as pipe:
-                for ip in ips:
-                    pipe.hset("{}:{}".format(self.dataset_prefix, token), str(ip["ip"]), ip["value"])
+                pipe.hmset("{}:{}".format(self.dataset_cache_prefix, token), mapping=dataset_cache)
+                for i in range(0, 65535):
+                    if len(dataset_subnets[i]) != 0:
+                        for record in self.chunks(dataset_subnets[i], 10000):
+                            pipe.hmset("{}:{}:{}".format(self.dataset_prefix, token, i), mapping=record)
                 pipe.execute()
 
         time = datetime.datetime.utcnow()
@@ -312,7 +334,7 @@ class RedisDB:
         uid = self.db.get("{}:{}".format(self.dataset_owner_prefix, token)).decode("UTF-8")
         user = self.find_user_by_uid(uid)
 
-        return DatasetMetadata(token, user, len(ip), self.get_dataset_created(token), time, time)
+        return DatasetMetadata(token, user, len(ips), self.get_dataset_created(token), time, time)
 
     def delete_dataset(self, token):
         uid = self.db.get("{}:{}".format(self.dataset_owner_prefix, token)).decode("UTF-8")
@@ -323,8 +345,12 @@ class RedisDB:
             pipe.delete("{}:{}".format(self.dataset_created_prefix, token))
             pipe.delete("{}:{}".format(self.dataset_updated_prefix, token))
             pipe.delete("{}:{}".format(self.dataset_viewed_prefix, token))
-            pipe.delete("{}:{}".format(self.dataset_prefix, token))
+            pipe.delete("{}:{}".format(self.dataset_cache_prefix, token))
+            pipe.delete("{}:{}".format(self.dataset_size_prefix, token))
             pipe.execute()
+
+        for key in self.db.scan_iter("{}:{}:*".format(self.dataset_prefix, token)):
+            self.db.delete(key)
 
     def get_dataset(self, token, network, resolution):
         logging.info("pripravuji redis: {}".format(datetime.datetime.utcnow()))
@@ -359,7 +385,7 @@ class RedisDB:
         return self.db.sismember(self.dataset_key, token)
 
     def get_dataset_size(self, token):
-        return self.db.hlen("{}:{}".format(self.dataset_prefix, token))
+        return self.db.hlen("{}:{}".format(self.dataset_size_prefix, token))
 
     def get_dataset_metadata(self, token):
         authorization = self.db.get("{}:{}".format(self.dataset_owner_prefix, token))
@@ -372,7 +398,21 @@ class RedisDB:
         return DatasetMetadata(token, user, size, dataset_created, dataset_updated, dataset_viewed)
 
     def set_ip_record(self, token, ip, value):
-        self.db.hset("{}:{}".format(self.dataset_prefix, token), ip, value)
+        ip = functools.reduce(lambda out, x: (out << 8) + int(x), str(ip).split('.'), 0)
+        ip_index = ip >> 16
+        old_value = 0.0
+        if self.db.hexists("{}:{}:{}".format(self.dataset_prefix, token, ip_index), ip) is True:
+            old_value = float(self.db.hget("{}:{}:{}".format(self.dataset_prefix, token, ip_index), ip))
+        else:
+            self.db.incrby("{}:{}".format(self.dataset_size_prefix, token), 1)
+
+        cache_value = float(self.db.hget("{}:{}".format(self.dataset_cache_prefix, token), ip_index))
+        new_value = cache_value - old_value + float(value)
+        key = "{}:{}".format(self.dataset_cache_prefix, token)
+        # str from ip_index due to weird behaviour when index is 0
+        self.db.hset(key, str(ip_index), new_value)
+
+        self.db.hset("{}:{}:{}".format(self.dataset_prefix, token, ip_index), str(ip), value)
         time = datetime.datetime.utcnow()
         self.set_dataset_updated(token, time)
         self.set_dataset_viewed(token, time)
@@ -380,10 +420,16 @@ class RedisDB:
         return self.get_ip_record(token, ip)
 
     def ip_record_exist(self, token, ip):
-        return self.db.hexists("{}:{}".format(self.dataset_prefix, token), ip)
+        ip = functools.reduce(lambda out, x: (out << 8) + int(x), str(ip).split('.'), 0)
+        ip_index = ip >> 16
+
+        return self.db.hexists("{}:{}:{}".format(self.dataset_prefix, token, ip_index), ip)
 
     def get_ip_record(self, token, ip):
-        value = self.db.hget("{}:{}".format(self.dataset_prefix, token), str(ip))
+        ip = functools.reduce(lambda out, x: (out << 8) + int(x), str(ip).split('.'), 0)
+        ip_index = ip >> 16
+
+        value = self.db.hget("{}:{}:{}".format(self.dataset_prefix, token, ip_index), ip)
 
         if value is None:
             value = b'0'
@@ -393,11 +439,21 @@ class RedisDB:
         return IPRecord(ip, value)
 
     def delete_ip_record(self, token, ip):
-        self.db.hdel("{}:{}".format(self.dataset_prefix, token), str(ip))
+        ip = functools.reduce(lambda out, x: (out << 8) + int(x), str(ip).split('.'), 0)
+        ip_index = ip >> 16
 
         time = datetime.datetime.utcnow()
-        self.set_dataset_updated(token, time)
         self.set_dataset_viewed(token, time)
+
+        old_value = self.db.hget("{}:{}:{}".format(self.dataset_prefix, token, ip_index), ip)
+
+        if old_value is not None:
+            cache_value = float(self.db.hget("{}:{}".format(self.dataset_cache_prefix, token), ip_index))
+            self.db.hset("{}:{}".format(self.dataset_cache_prefix, token), str(ip_index), cache_value - float(old_value))
+
+            self.db.decrby("{}:{}".format(self.dataset_size_prefix, token), 1)
+            self.db.hdel("{}:{}:{}".format(self.dataset_prefix, token, ip_index), ip)
+            self.set_dataset_updated(token, time)
 
     def update_ip_record(self, token, ip, value, update="set"):
         ip = str(ip)
