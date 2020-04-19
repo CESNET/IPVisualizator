@@ -80,7 +80,7 @@ class Dataset:
         else:
             #self.ip_records = records
             for key, val in records.items():
-                self.ip_records[key.decode("UTF-8")] = float(val.decode("UTF-8"))
+                self.ip_records[int(key.decode("UTF-8"))] = float(val.decode("UTF-8"))
         logging.info("hotovy dataset: {}".format(datetime.datetime.utcnow()))
 
     def hilbert_i_to_xy(self, ix, order):
@@ -122,11 +122,7 @@ class Dataset:
         else:
             data = self.ip_records
         for key, val in data.items():
-            if self.cache is not None:
-                ip = key
-                ip = ip << 16
-            else:
-                ip = functools.reduce(lambda out, x: (out << 8) + int(x), key.split('.'), 0)
+            ip = key if self.cache is None else key << 16
             ip_network = (ip >> 32 - network.prefixlen) << 32 - network.prefixlen
             if network_integer == ip_network:
                 ip = (ip >> 32-resolution) << 32-resolution
@@ -266,7 +262,8 @@ class RedisDB:
             dataset_cache[i] = 0.0
 
         for ip, value in ips.items():
-            ip_index = functools.reduce(lambda out, x: (out << 8) + int(x), ip.split('.'), 0) >> 16
+            ip = functools.reduce(lambda out, x: (out << 8) + int(x), ip.split('.'), 0)
+            ip_index = ip >> 16
             dataset_cache[ip_index] += value
             dataset_subnets[ip_index][ip] = value
 
