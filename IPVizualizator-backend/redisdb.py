@@ -20,19 +20,23 @@ class NotFoundError(Exception):
 
 
 class User:
-    def __init__(self, record):
+    def __init__(self, record, owned_datasets):
         self.uid = int(record[b'uid'].decode("UTF-8"))
         self.username = record[b'username'].decode("UTF-8")
         self.authorization = record[b'authorization'].decode("UTF-8")
         self.admin = True if record[b'admin'] == b'True' else False
+        self.owned_datasets = []
+
+        for dataset in owned_datasets:
+            self.owned_datasets.append(dataset.decode("UTF-8"))
 
     def __str__(self):
-        return "User #{}: Username: {}, Admin: {}, Authorization: {}".format(
-            self.uid, self.username, self. admin, self.authorization)
+        return "User #{}: Username: {}, Admin: {}, Authorization: {}, Owned_datasets: {}".format(
+            self.uid, self.username, self. admin, self.authorization, self.owned_datasets)
 
     def __repr__(self):
-        return "User(uid={},username={},admin={},authorization={}".format(
-            self.uid, self.username, self. admin, self.authorization)
+        return "User(uid={},username={},admin={},authorization={},owned_datasets: {})".format(
+            self.uid, self.username, self. admin, self.authorization, repr(self.owned_datasets))
 
 
 class IPRecord:
@@ -51,7 +55,7 @@ class DatasetMetadata:
     def __init__(self, token, user, size, dataset_created, dataset_updated, dataset_viewed):
         self.token = token
         self.user = user
-        self.size = int(size)
+        self.size = size
         self.dataset_created = dataset_created
         self.dataset_updated = dataset_updated
         self.dataset_viewed = dataset_viewed
@@ -150,9 +154,10 @@ class Dataset:
 
 
 class RedisDB:
-    def __init__(self, config):
-        self.prefix = config["redis"]["data_prefix"]
-        self.db = redis.Redis(host=config["redis"]["ip"], port=config["redis"]["port"], db=config["redis"]["db"])
+    def __init__(self, host="127.0.0.1", port=6379, db=0, data_prefix="ipvizualizator", initial_users=[]):
+        self.prefix = data_prefix
+
+        self.db = redis.Redis(host=host, port=port, db=db)
 
         # keys and prefixes in redis database
         self.next_user_id_key = "{}:next_user_id".format(self.prefix)
@@ -172,9 +177,8 @@ class RedisDB:
         if self.db.exists(self.next_user_id_key) == 0:
             self.db.set(self.next_user_id_key, "1000")
 
-        if "users" in config:
-            for user in config["users"]:
-                self.create_user(user["username"], user["uid"], user["admin"], user["authorization"])
+        for user in initial_users:
+            self.create_user(user["username"], user["uid"], user["admin"], user["authorization"])
 
     def create_user(self, username, uid=None, admin=False, authorization=None):
         if uid is None:
@@ -225,16 +229,18 @@ class RedisDB:
 
         uid = self.db.hget(self.user_tokens_key, authorization).decode("UTF-8")
         record = self.db.hgetall("{}:{}".format(self.user_prefix, uid))
+        owned_dataset = self.db.smembers("{}:{}".format(self.dataset_owned_prefix, uid))
 
-        return User(record)
+        return User(record, owned_dataset)
 
     def find_user_by_uid(self, uid):
         if self.db.exists("{}:{}".format(self.user_prefix, uid)) == 0:
             raise NotFoundError("User doesn't exist")
 
         record = self.db.hgetall("{}:{}".format(self.user_prefix, uid))
+        owned_dataset = self.db.smembers("{}:{}".format(self.dataset_owned_prefix, uid))
 
-        return User(record)
+        return User(record, owned_dataset)
 
     def user_permission(self, user, token):
         key = "{}:{}".format(self.dataset_owned_prefix, user.uid)
@@ -385,7 +391,7 @@ class RedisDB:
         return self.db.sismember(self.dataset_key, token)
 
     def get_dataset_size(self, token):
-        return self.db.hlen("{}:{}".format(self.dataset_size_prefix, token))
+        return int(self.db.get("{}:{}".format(self.dataset_size_prefix, token)).decode("UTF-8"))
 
     def get_dataset_metadata(self, token):
         authorization = self.db.get("{}:{}".format(self.dataset_owner_prefix, token))
@@ -487,13 +493,10 @@ class RedisDB:
         self.db.set("{}:{}".format(self.dataset_viewed_prefix, token), time)
 
     def get_dataset_created(self, token):
-        timestamp = int(self.db.get("{}:{}".format(self.dataset_created_prefix, token)).decode("UTF-8"))
-        return datetime.datetime.fromtimestamp(timestamp)
+        return int(self.db.get("{}:{}".format(self.dataset_created_prefix, token)).decode("UTF-8"))
 
     def get_dataset_updated(self, token):
-        timestamp = int(self.db.get("{}:{}".format(self.dataset_updated_prefix, token)).decode("UTF-8"))
-        return datetime.datetime.fromtimestamp(timestamp)
+        return int(self.db.get("{}:{}".format(self.dataset_updated_prefix, token)).decode("UTF-8"))
 
     def get_dataset_viewed(self, token):
-        timestamp = int(self.db.get("{}:{}".format(self.dataset_viewed_prefix, token)).decode("UTF-8"))
-        return datetime.datetime.fromtimestamp(timestamp)
+        return int(self.db.get("{}:{}".format(self.dataset_viewed_prefix, token)).decode("UTF-8"))

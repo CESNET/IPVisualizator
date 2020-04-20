@@ -63,6 +63,31 @@ paths:
       security:
         - APIKey: []
   /vizualizator/{token}:
+    get:
+      tags: ["Vizualizator"]
+      summary: "Get dataset metadata"
+      operationId: "IPVizualizator.get_dataset_metadata_api"
+      parameters:
+        - name: "token"
+          in: "path"
+          description: "Dataset token"
+          required: true
+          type: "string"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/Metadata"
+        404:
+          description: "Dataset token doesn't exist"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      produces:
+        - "application/json"
+      security:
+        - APIKey: []
     put:
       tags: ["Vizualizator"]
       summary: "Update IPs and their values for existing dataset (delete all old records)"
@@ -326,6 +351,21 @@ paths:
       produces:
       - "application/json"
   /user:
+    get:
+      tags: ["User"]
+      summary: "Get information about authorized user"
+      operationId: "IPVizualizator.get_user_info_api"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/ResponseUser"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      produces:
+        - "application/json"
+      security:
+        - APIKey: []
     post:
       tags: ["User"]
       summary: "Create new user"
@@ -409,9 +449,11 @@ definitions:
       token:
         type: "string"
         description: "Token identifying given records"
+        example: "UeU5mCtOA9zvYxch_S6Hog"
       status:
         type: "number"
         description: "Status"
+        example: "200"
   User:
     type: "object"
     required:
@@ -423,19 +465,32 @@ definitions:
   ResponseUser:
     type: "object"
     required:
-      - "id"
+      - "uid"
       - "username"
       - "authorization"
+      - "admin"
     properties:
-      id:
+      uid:
         type: "number"
-        description: "User ID"
+        description: "User's UID"
+        example: "1001"
       username:
         type: "string"
         description: "Username"
+        example: "Kocicka"
       authorization:
         type: "string"
-        description: "User authorization token"
+        description: "User's authorization token"
+        example: "a12d3dd304ff4323mmdbo665"
+      admin:
+        type: "boolean"
+        description: "Is user administrator?"
+        example: "false"
+      owned_datasets:
+        type: "array"
+        description: "Tokens of owned datasets"
+        items:
+          $ref: "#/definitions/Token"
   Pixel:
     type: "object"
     required:
@@ -460,6 +515,40 @@ definitions:
         type: "string"
         description: "IP network"
         example: "147.32.0.0/24"
+  Metadata:
+    type: "object"
+    required:
+      - "token"
+      - "user"
+      - "size"
+      - "dataset_created"
+      - "dataset_updated"
+      - "dataset_viewed"
+    properties:
+      token:
+        type: "string"
+        description: "Dataset token"
+        example: "UeU5mCtOA9zvYxch_S6Hog"
+      user:
+        type: "object"
+        description: "Dataset owner"
+        $ref: "#/definitions/ResponseUser"
+      size:
+        type: "number"
+        description: "Number of IP addresses in dataset"
+        example: "976000"
+      dataset_created:
+        type: "number"
+        description: "UNIX timestamp when was dataset created"
+        example: "1587282815"
+      dataset_updated:
+        type: "number"
+        description: "UNIX timestamp when was at least one IP address in dataset updated"
+        example: "1587282900"
+      dataset_viewed:
+        type: "number"
+        description: "UNIX timestamp when someone generated map from dataset or viewed at least one IP address in dataset or manipulated with dataset"
+        example: "1587283000"
   Map:
     type: "object"
     required:

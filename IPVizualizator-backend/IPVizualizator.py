@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """
-IPVizualizator Backend
+IPVizualizator API Backend
 """
 
 import sys
@@ -9,54 +9,47 @@ from connexion.exceptions import OAuthProblem
 import datetime
 import math
 import logging
-from ipaddress import IPv4Address, IPv4Network, AddressValueError
+from ipaddress import IPv4Address, IPv4Network
 from flask_cors import CORS
 from flask import Response
 import yaml
 import json
-import numpy as np
 import re
+import redis
 from jsonschema import draft4_format_checker
 
 from redisdb import RedisDB, NotFoundError
 
-CONFIG_FILE = "config/config.yaml"
+CONFIG_FILE = "config/config.yml"
 CONFIG = {}
-
-#################################
-# Open Config
-with open(CONFIG_FILE, 'r') as data:
-    try:
-        CONFIG = yaml.safe_load(data)
-    except yaml.YAMLError as exc:
-        print(exc)
-        sys.exit(1)
-
 
 #################################
 # Helpers
 
-
-
 IP_RE = re.compile("^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
+
 
 @draft4_format_checker.checks("ip")
 def is_ip(val):
     if not isinstance(val, str):
-                    return True
+        return True
+
     return IP_RE.match(val) is not None
 
 
 def convert_ip_data_from_csv(records):
-    temp_records = {}
+    ips = {}
 
     for record in records.splitlines():
-        record = record.decode().strip()
+        record = record.decode("UTF-8").strip()
 
+        # Skip comments
         if record[0] == "#":
             continue
+
         record = record.split(',')
 
+        # TODO napis kde se stala chyba v jakem zaznamu
         if len(record) != 2:
             raise ValueError
 
@@ -65,10 +58,9 @@ def convert_ip_data_from_csv(records):
 
         ip = record[0]
         value = float(record[1])
+        ips[ip] = value
 
-        temp_records[ip] = value
-
-    return temp_records
+    return ips
 
 #################################
 # API
@@ -92,6 +84,21 @@ def create_new_dataset_api(user, records):
     return {"status": 200, "token": dataset.token}, 200
 
 
+def get_dataset_metadata_api(user, token):
+    if db.dataset_exist(token) is False:
+        return {"status": 404, "detail": "Dataset not found"}, 404
+
+    user = db.find_user_by_uid(user)
+
+    if db.user_permission(user, token) is False:
+        return {"status": 401, "detail": "User doesn't have a permission to manipulate with this dataset"}, 401
+
+    metadata = db.get_dataset_metadata(token)
+    user = {"uid": metadata.user.uid, "username": metadata.user.username, "authorization": metadata.user.authorization,
+            "admin": metadata.user.admin, "owned_datasets": metadata.user.owned_datasets}
+
+    return {"token": metadata.token, "user": user, "size": metadata.size, "dataset_created": metadata.dataset_created,
+            "dataset_updated": metadata.dataset_updated, "dataset_viewed": metadata.dataset_viewed}
 
 def update_dataset_api(user, token, records):
     if db.dataset_exist(token) is False:
@@ -277,11 +284,17 @@ def get_map_api(token, network, mask, resolution=None):
     logging.info("hotovo hilbertovu mapu: {}".format(datetime.datetime.utcnow()))
     return Response(json.dumps(response, separators=(',', ':')), status=200, mimetype='application/json')
 
+def get_user_info_api(user):
+    user = db.find_user_by_uid(user)
+
+    return {"uid": user.uid, "username": user.username, "authorization": user.authorization,
+            "admin": user.admin, "owned_datasets": user.owned_datasets}, 200
+
 
 def create_new_user_api(user):
     user = db.create_user(user["username"])
 
-    return {"id": user.uid, "username": user.username, "authorization": user.authorization}, 200
+    return {"uid": user.uid, "username": user.username, "authorization": user.authorization, "admin": user.admin}, 200
 
 
 def delete_user_api(user):
@@ -300,15 +313,62 @@ def apikey_auth(token, required_scopes):
 
 
 #################################
+# Setup IPVizualizator application 
 
+# Setup logger
+logger = logging.getLogger("IPVizualizator")
+logger.setLevel(logging.INFO)
+h = logging.StreamHandler()
+h.setLevel(logging.INFO)
+formatter = logging.Formatter("%(asctime)s - [%(levelname)s] - %(name)s: %(message)s")
+h.setFormatter(formatter)
+logger.addHandler(h)
 
-logging.basicConfig(level=logging.INFO)
-app = connexion.App(__name__, specification_dir="./api/")
+# Open Config
+try:
+    with open(CONFIG_FILE, 'r') as data:
+        try:
+            CONFIG = yaml.safe_load(data)
+        except yaml.YAMLError as error:
+            logger.critical("Config file '{}' is not valid YAML: {}".format(CONFIG_FILE, error))
+            sys.exit(1)
+except FileNotFoundError:
+    logger.critical("Config file '{}' is not found.".format(CONFIG_FILE))
+    sys.exit(1)
+except PermissionError:
+    logger.critical("Config file '{}' is not readable.".format(CONFIG_FILE))
+    sys.exit(1)
+
+# Setup connexion
+app = connexion.App(__name__)
 CORS(app.app)
-app.add_api("api.yaml", arguments={"title": "IPVizualizator"})
-db = RedisDB(CONFIG)
+API_FILE = CONFIG.get("app", {}).get("api_file", "api/api.yml")
+try:
+    app.add_api(API_FILE, arguments={"title": "IPVizualizator"})
+except FileNotFoundError:
+    logger.critical("API file '{}' is not found.".format(API_FILE))
+    sys.exit(1)
+except PermissionError:
+    logger.critical("API file '{}' is not readable.".format(API_FILE))
+    sys.exit(1)
 
+
+# Redis backend for storing data
+redis_host = CONFIG.get("redis", {}).get("host", "127.0.0.1")
+redis_port = CONFIG.get("redis", {}).get("port", 6379)
+redis_db = CONFIG.get("redis", {}).get("db", 0)
+redis_prefix = CONFIG.get("redis", {}).get("data_prefix", "ipvizualizator")
+initial_users = CONFIG.get("users", [])
+
+try:
+    db = RedisDB(host=redis_host, port=redis_port, db=redis_db, data_prefix=redis_prefix, initial_users=initial_users)
+except redis.exceptions.ConnectionError as error:
+    logger.critical("Can't connect to redis {}:{}.".format(redis_host, redis_port))
+    sys.exit(1)
+
+# Expose app for WSGI applications
 application = app.app
 
+# Run Flask development server
 if __name__ == "__main__":
     app.run(port=CONFIG["app"]["port"])
