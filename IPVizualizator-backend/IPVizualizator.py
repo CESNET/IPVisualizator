@@ -226,7 +226,7 @@ def put_ip_api(user, token, ip, value, incr=False, decr=False, ):
     return {"status": 200}, 200
 
 
-def get_map_api(token, network, mask, resolution=None):
+def get_map_api(token, network, mask, resolution=None, skip_zeros=False):
     if db.dataset_exist(token) is False:
         return {"status": 404, "detail": "Dataset not found"}, 404
 
@@ -253,7 +253,6 @@ def get_map_api(token, network, mask, resolution=None):
 
     response = {"status": 200, "network": str(network.network_address), "mask": str(network.netmask), "prefix_length": network.prefixlen, "min_address": str(network.network_address), "max_address": str(network.broadcast_address), "pixel_mask": resolution}
 
-
     hilbert_order = int((resolution - network.prefixlen) / 2)
     dataset = db.get_dataset(token, network, resolution)
     networks = dataset.get_networks(network, resolution)
@@ -268,17 +267,18 @@ def get_map_api(token, network, mask, resolution=None):
 
         # faster rounding of value to 5 decimal digit
         value = int(value * round_p + 0.5)/round_p
-        min_value = value if value < min_value else min_value
-        max_value = value if value > max_value else max_value
-        #subnet = IPv4Network(subnet)
-        #index = (int(subnet.network_address) - int(network.network_address)) >> 32 - resolution
-        x, y = dataset.hilbert_i_to_xy(index, hilbert_order)
+        if value != 0.0:
+            min_value = value if value < min_value else min_value
+            max_value = value if value > max_value else max_value
 
-        pixels.append({"y": y, "x": x, "val": value, "ip": "{}/{}".format(str(network.network_address+(index << 32-resolution)),str(resolution))})
+        if skip_zeros is not True or value != 0.0:
+            x, y = dataset.hilbert_i_to_xy(index, hilbert_order)
+            pixels.append({"y": y, "x": x, "val": value, "ip": "{}/{}".format(
+                str(network.network_address+(index << 32-resolution)),str(resolution))})
 
     response["pixels"] = pixels
-    response["max_value"] = max_value
-    response["min_value"] = min_value
+    response["max_value"] = max_value if max_value != - math.inf else 0.0
+    response["min_value"] = min_value if min_value != math.inf else 0.0
     response["hilbert_order"] = hilbert_order
 
     logging.info("hotovo hilbertovu mapu: {}".format(datetime.datetime.utcnow()))

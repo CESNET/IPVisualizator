@@ -333,6 +333,10 @@ paths:
         in: "query"
         description: "Network mask which represent 1px - need to be even - default value is given network mask+16"
         type: "string"
+      - name: "skip_zeros"
+        in: "query"
+        description: "Skip pixels with zero value in response - it could significantly reduce response size"
+        type: "boolean"
       responses:
         200:
           description: "Successful operation"
