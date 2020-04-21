@@ -372,14 +372,12 @@ class RedisDB:
             if network.prefixlen >= 16:
                 index = int(network.network_address) >> 16
                 key = "{}:{}:{}".format(self.dataset_prefix, token, index)
-                if self.db.exists(key) == 1:
-                    data = self.db.hgetall(key)
+                data = self.db.hgetall(key)
             else:
                 subnets = network.subnets(new_prefix=16)
                 for subnet in subnets:
                     key = "{}:{}:{}".format(self.dataset_prefix, token, int(subnet.network_address) >> 16)
-                    if self.db.exists(key):
-                        data.update(self.db.hgetall(key))
+                    data.update(self.db.hgetall(key))
 
             metadata = self.get_dataset_metadata(token)
             self.set_dataset_viewed(token, datetime.datetime.utcnow())
