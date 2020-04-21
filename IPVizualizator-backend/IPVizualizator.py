@@ -43,8 +43,8 @@ def convert_ip_data_from_csv(records):
     for record in records.splitlines():
         record = record.decode("UTF-8").strip()
 
-        # Skip comments
-        if record[0] == "#":
+        # Skip comments and empty lines
+        if len(record) == 0 or record[0] == "#":
             continue
 
         record = record.split(',')
