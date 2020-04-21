@@ -12,6 +12,7 @@ class IPVizualizator {
         this.network = args.network;
         this.mask = args.mask;
         this.resolution = args.resolution;
+        this.skip_zeros = args.skip_zeros;
         this.bordered_pixel = 'bordered_pixel' in args ? args.bordered_pixel : true;
 
         this.network_data = {};
@@ -48,13 +49,29 @@ class IPVizualizator {
     set_network_data(network_data) {
         this.network_data = network_data;
     }
+    
+    set_skip_zeros(skip_zeros) {
+        this.skip_zeros = skip_zeros;
+    }
+    
+    set_canvas_size(width, height) {
+        var context = this.canvas_context;
+        var hidden_context = this.hidden_canvas_context;
+        context.clearRect(0, 0, this.canvas_width, this.canvas_height);
+        hidden_context.clearRect(0, 0, this.canvas_width, this.canvas_height);
+        
+        this.canvas_width = width;
+        this.canvas_height = height;
+        this.canvas.attr('width', this.canvas_width).attr('height', this.canvas_height);
+        this.hidden_canvas.attr('width', this.canvas_width).attr('height', this.canvas_height);
+    }
 
     get_network_data() {
         return this.network_data;
     }
 
     create_api_call_url() {
-        return this.api + "/vizualizator/" + this.token + "/map/" + this.network + "/" + this.mask +"?resolution=" + this.resolution;
+        return this.api + "/vizualizator/" + this.token + "/map/" + this.network + "/" + this.mask +"?resolution=" + this.resolution + "&skip_zeros=" + this.skip_zeros;
     }
 
     genColor() {
@@ -82,8 +99,8 @@ class IPVizualizator {
     databind() {
         this.color_map.domain([parseFloat(this.network_data.min_value), parseFloat(this.network_data.max_value)]);
         
-        const pixel_width = Math.ceil(this.canvas_width / Math.sqrt(this.network_data.pixels.length));
-        const pixel_height = Math.ceil(this.canvas_height / Math.sqrt(this.network_data.pixels.length));
+        const pixel_width = Math.ceil(this.canvas_width / (2**this.network_data.hilbert_order));
+        const pixel_height = Math.ceil(this.canvas_height / (2**this.network_data.hilbert_order));
 
 
         var pixels = this.custom.selectAll("custom.rect").data(this.network_data.pixels);
@@ -159,7 +176,27 @@ class IPVizualizator {
         }
         context.clearRect(0, 0, this.canvas_width, this.canvas_height);
         
+        
+        if(hidden == false && this.skip_zeros == true) {
+            context.fillStyle = "#000000";
+            context.fillRect(0, 0, this.canvas_width, this.canvas_height);
+            
+            var pixel = this.custom.select("custom.rect")
+            
+            if(pixel.empty() == false && pixel.attr("border") == "bordered") {
+                var size = 2**this.network_data.hilbert_order
+                context.lineWidth = 2;
+                context.strokeStyle = "#C7C7C7";
+                for(var x = 0; x < size; x++) {
+                    for(var y = 0; y < size; y++) {
+                        context.strokeRect(x*pixel.attr('width'), y*pixel.attr('height'), pixel.attr('width'), pixel.attr('height'));
+                    }
+                }
+            }
+        }
+        
         var pixels = this.custom.selectAll("custom.rect");
+
         pixels.each(function(d) {
             var pixel = d3.select(this);
             context.fillStyle = hidden ? pixel.attr('fillStyleHidden') : pixel.attr('fillStyle');
