@@ -337,6 +337,10 @@ paths:
         in: "query"
         description: "Skip pixels with zero value in response - it could significantly reduce response size"
         type: "boolean"
+      - name: "raw_data"
+        in: "query"
+        description: "Don't compute x and y coordinates and IP string - leave it to a client"
+        type: "boolean"
       responses:
         200:
           description: "Successful operation"

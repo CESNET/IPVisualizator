@@ -72,11 +72,12 @@ class DatasetMetadata:
 
 class Dataset:
     def __init__(self, metadata, records=None, cache=None):
+        self.logger = logging.getLogger("IPVizualizator")
         self.metadata = metadata
         self.ip_records = {}
         self.cache = None
 
-        logging.info("pripravuji dataset: {}".format(datetime.datetime.utcnow()))
+        self.logger.info("pripravuji dataset: {}".format(datetime.datetime.utcnow()))
         if cache is not None:
             self.cache = {}
             for key, val in cache.items():
@@ -85,7 +86,7 @@ class Dataset:
             #self.ip_records = records
             for key, val in records.items():
                 self.ip_records[int(key.decode("UTF-8"))] = float(val.decode("UTF-8"))
-        logging.info("hotovy dataset: {}".format(datetime.datetime.utcnow()))
+        self.logger.info("hotovy dataset: {}".format(datetime.datetime.utcnow()))
 
     def hilbert_i_to_xy(self, ix, order):
         state = 0
@@ -116,10 +117,10 @@ class Dataset:
     def get_networks(self, network, resolution):
         subnets = {}
 
-        logging.info("pripravuji networks: {}".format(datetime.datetime.utcnow()))
+        self.logger.info("pripravuji networks: {}".format(datetime.datetime.utcnow()))
         subnets = np.zeros(2**(resolution-network.prefixlen))
 
-        logging.info("hotovo networks: {}".format(datetime.datetime.utcnow()))
+        self.logger.info("hotovo networks: {}".format(datetime.datetime.utcnow()))
         network_integer = int(network.network_address)
         if self.cache is not None:
             data = self.cache
@@ -133,7 +134,7 @@ class Dataset:
                 index = (ip-network_integer) >> 32 - resolution
                 subnets[index] += val
 
-        logging.info("hotovo subnets: {}".format(datetime.datetime.utcnow()))
+        self.logger.info("hotovo subnets: {}".format(datetime.datetime.utcnow()))
         return subnets
 
     def __str__(self):
@@ -156,7 +157,7 @@ class Dataset:
 class RedisDB:
     def __init__(self, host="127.0.0.1", port=6379, db=0, data_prefix="ipvizualizator", initial_users=[]):
         self.prefix = data_prefix
-
+        self.logger = logging.getLogger("IPVizualizator")
         self.db = redis.Redis(host=host, port=port, db=db)
 
         # keys and prefixes in redis database
@@ -274,7 +275,7 @@ class RedisDB:
             dataset_cache[ip_index] += value
             dataset_subnets[ip_index][ip] = value
 
-        logging.info("pred pipeline: {}".format(datetime.datetime.utcnow()))
+        self.logger.info("pred pipeline: {}".format(datetime.datetime.utcnow()))
         with self.db.pipeline() as pipe:
             pipe.sadd(self.dataset_key, token)
             pipe.sadd("{}:{}".format(self.dataset_owned_prefix, user.uid), token)
@@ -285,9 +286,9 @@ class RedisDB:
                 if len(dataset_subnets[i]) != 0:
                     for record in self.chunks(dataset_subnets[i], 10000):
                         pipe.hmset("{}:{}:{}".format(self.dataset_prefix, token, i), mapping=record)
-            logging.info("pred execute: {}".format(datetime.datetime.utcnow()))
+            self.logger.info("pred execute: {}".format(datetime.datetime.utcnow()))
             pipe.execute()
-            logging.info("po execute: {}".format(datetime.datetime.utcnow()))
+            self.logger.info("po execute: {}".format(datetime.datetime.utcnow()))
 
         time = datetime.datetime.utcnow()
         self.set_dataset_created(token, time)
@@ -359,12 +360,12 @@ class RedisDB:
             self.db.delete(key)
 
     def get_dataset(self, token, network, resolution):
-        logging.info("pripravuji redis: {}".format(datetime.datetime.utcnow()))
+        self.logger.info("pripravuji redis: {}".format(datetime.datetime.utcnow()))
         if resolution <= 16:
             data = self.db.hgetall("{}:{}".format(self.dataset_cache_prefix, token))
             metadata = self.get_dataset_metadata(token)
             self.set_dataset_viewed(token, datetime.datetime.utcnow())
-            logging.info("hotovo redis: {}".format(datetime.datetime.utcnow()))
+            self.logger.info("hotovo redis: {}".format(datetime.datetime.utcnow()))
 
             return Dataset(metadata, cache=data)
         else:
@@ -381,7 +382,7 @@ class RedisDB:
 
             metadata = self.get_dataset_metadata(token)
             self.set_dataset_viewed(token, datetime.datetime.utcnow())
-            logging.info("hotovo redis: {}".format(datetime.datetime.utcnow()))
+            self.logger.info("hotovo redis: {}".format(datetime.datetime.utcnow()))
 
             return Dataset(metadata, records=data)
 

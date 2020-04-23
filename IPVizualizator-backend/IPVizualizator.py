@@ -67,7 +67,7 @@ def convert_ip_data_from_csv(records):
 
 
 def create_new_dataset_api(user, records):
-    logging.info("zacatek: {}".format(datetime.datetime.utcnow()))
+    logger.info("zacatek: {}".format(datetime.datetime.utcnow()))
 
     try:
         records = convert_ip_data_from_csv(records)
@@ -77,7 +77,7 @@ def create_new_dataset_api(user, records):
     if len(records) == 0:
         return {"status": 400, "detail": "No data provided."}, 400
 
-    logging.info("zpracovano csv: {}".format(datetime.datetime.utcnow()))
+    logger.info("zpracovano csv: {}".format(datetime.datetime.utcnow()))
     user = db.find_user_by_uid(user)
     dataset = db.create_dataset(records, user)
 
@@ -226,7 +226,7 @@ def put_ip_api(user, token, ip, value, incr=False, decr=False, ):
     return {"status": 200}, 200
 
 
-def get_map_api(token, network, mask, resolution=None, skip_zeros=False):
+def get_map_api(token, network, mask, resolution=None, skip_zeros=False, raw_data=False):
     if db.dataset_exist(token) is False:
         return {"status": 404, "detail": "Dataset not found"}, 404
 
@@ -251,18 +251,26 @@ def get_map_api(token, network, mask, resolution=None, skip_zeros=False):
             return {"status": 400,
                     "detail": "Resolution is invalid - not even or less than given mask or greater than 32."}, 400
 
-    response = {"status": 200, "network": str(network.network_address), "mask": str(network.netmask), "prefix_length": network.prefixlen, "min_address": str(network.network_address), "max_address": str(network.broadcast_address), "pixel_mask": resolution}
+    if raw_data is False:
+        response = {"status": 200, "network": str(network.network_address), "mask": str(network.netmask),
+                    "prefix_length": network.prefixlen, "min_address": str(network.network_address),
+                    "max_address": str(network.broadcast_address), "pixel_mask": resolution}
+    else:
+        response = {"status": 200, "network": int(network.network_address), "mask": str(network.netmask),
+                    "prefix_length": network.prefixlen, "min_address": int(network.network_address),
+                    "max_address": int(network.broadcast_address), "pixel_mask": resolution}
 
     hilbert_order = int((resolution - network.prefixlen) / 2)
     dataset = db.get_dataset(token, network, resolution)
     networks = dataset.get_networks(network, resolution)
-    logging.info("pripravuji hilbertovu mapu: {}".format(datetime.datetime.utcnow()))
+    logger.info("pripravuji hilbertovu mapu: {}".format(datetime.datetime.utcnow()))
 
     max_value = - math.inf
     min_value = math.inf
 
     round_p = float(10**5)
     pixels = []
+
     for index, value in enumerate(networks):
 
         # faster rounding of value to 5 decimal digit
@@ -272,16 +280,19 @@ def get_map_api(token, network, mask, resolution=None, skip_zeros=False):
             max_value = value if value > max_value else max_value
 
         if skip_zeros is not True or value != 0.0:
-            x, y = dataset.hilbert_i_to_xy(index, hilbert_order)
-            pixels.append({"y": y, "x": x, "val": value, "ip": "{}/{}".format(
-                str(network.network_address+(index << 32-resolution)),str(resolution))})
+            if raw_data is False:
+                x, y = dataset.hilbert_i_to_xy(index, hilbert_order)
+                pixels.append({"y": y, "x": x, "val": value, "ip": "{}/{}".format(
+                    str(network.network_address + (index << 32 - resolution)), str(resolution))})
+            else:
+                pixels.append({"val": value, "ip": index})
 
     response["pixels"] = pixels
     response["max_value"] = max_value if max_value != - math.inf else 0.0
     response["min_value"] = min_value if min_value != math.inf else 0.0
     response["hilbert_order"] = hilbert_order
 
-    logging.info("hotovo hilbertovu mapu: {}".format(datetime.datetime.utcnow()))
+    logger.info("hotovo hilbertovu mapu: {}".format(datetime.datetime.utcnow()))
     return Response(json.dumps(response, separators=(',', ':')), status=200, mimetype='application/json')
 
 def get_user_info_api(user):
@@ -322,7 +333,8 @@ h = logging.StreamHandler()
 h.setLevel(logging.INFO)
 formatter = logging.Formatter("%(asctime)s - [%(levelname)s] - %(name)s: %(message)s")
 h.setFormatter(formatter)
-logger.addHandler(h)
+if not logger.handlers:
+    logger.addHandler(h)
 
 # Open Config
 try:
