@@ -261,12 +261,48 @@ class IPVizualizator {
             context.lineWidth = this.overlay_thickness;
             context.strokeStyle = "#ff0000";
 
+            var x = 0;
+            var y = 0;
             if(coords[0] <= coords_next_index[0] && coords[1] <= coords_next_index[1]) {
-                context.strokeRect(coords[0] * this.pixel_width, coords[1] * this.pixel_height, width, height);
+                x = coords[0] * this.pixel_width;
+                y = coords[1] * this.pixel_height;
             }
             else {
-                context.strokeRect((coords[0] * this.pixel_width + this.pixel_width) - width, (coords[1]  * this.pixel_height + this.pixel_height) - height, width, height);
+                x = (coords[0] * this.pixel_width + this.pixel_width) - width;
+                y = (coords[1]  * this.pixel_height + this.pixel_height) - height;
             }
+            context.strokeRect(x, y, width, height);
+
+            context.fillStyle = "#ff0000";
+            context.font = "bold 20px Arial";
+            var ip = this.network_data.network + (this.zoomed_subnet << (32 - this.network_data.pixel_mask));
+            ip =  ( (ip>>>24) +'.' + (ip>>16 & 255) +'.' + (ip>>8 & 255) +'.' + (ip & 255) );
+            var mask = this.network_data.prefix_length + this.zoom_mask;
+            mask = mask <= 32 ? mask : 32;
+            var subnet_text = ip + "/" + mask;
+            var text_width = context.measureText(subnet_text).width;
+
+            if(y < 25) {
+                context.textBaseline = "top";
+                y = y + height + 2;
+            }
+            else {
+                context.textBaseline = "bottom";
+            }
+            if(x+width/2+text_width/2 > this.canvas_width) {
+                context.textAlign = "right";
+                x = this.canvas_width - 3;
+
+            }
+            else if(x+width/2-text_width/2 < 0) {
+                context.textAlign = "left";
+                x = 3;
+            }
+            else {
+                x = x + width/2;
+                context.textAlign = "center";
+            }
+            context.fillText( subnet_text, x, y);
         }
         context.globalAlpha = 1.0;
     }
@@ -280,7 +316,9 @@ class IPVizualizator {
         var new_resolution = this.network_data.prefix_length + this.zoom_mask + 8 ;
         this.resolution =  new_resolution <= 32 ? new_resolution : 32;
         this.zoomed_subnet = null;
-
+        if(this.zoom_mask > (this.resolution - this.mask)) {
+            this.zoom_mask = this.resolution - this.mask;
+        }
         this.update();
 
     }
