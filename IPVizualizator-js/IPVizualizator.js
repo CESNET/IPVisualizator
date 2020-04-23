@@ -4,8 +4,19 @@ class IPVizualizator {
         this.canvas_height = args.height;
         this.canvas_width = args.width;
         this.token = args.token;
-        this.canvas = d3.select(args.canvas).append('canvas').classed('mainCanvas', true).attr('width', this.canvas_width).attr('height', this.canvas_height);
+        this.canvas = d3.select(args.canvas).append('canvas')
+                        .classed('mainCanvas', true)
+                        .attr('width', this.canvas_width)
+                        .attr('height', this.canvas_height)
+                        .attr('style', 'position: absolute; left: 0; top: 0; z-index: 0; background-color: transparent;');
         this.canvas_context = this.canvas.node().getContext('2d');
+        this.overlay_canvas = d3.select(args.canvas).append('canvas')
+            .classed('overlayCanvas', true)
+            .attr('width', this.canvas_width)
+            .attr('height', this.canvas_height)
+            .attr('style', 'position: absolute; left: 0; top: 0; z-index: 1; background-color: transparent;');
+        this.overlay_canvas_context = this.overlay_canvas.node().getContext('2d');
+
         var customBase = document.createElement("custom");
         this.custom = d3.select(customBase);
         this.api = args.api;
@@ -21,9 +32,18 @@ class IPVizualizator {
         this.hidden_canvas_context = this.hidden_canvas.node().getContext('2d');
         this.nextCol = 1;
         this.color_to_pixel = {};
-        this.actual_pixel = null;
+        this.zoomed_subnet = null;
+        this.zoom_mask = 2;
+        this.bordered_map = false;
+        this.pixel_width = 0;
+        this.pixel_height = 0;
+        this.map_opacity = 1.0;
+        this.overlay_opacity = 1.0;
+        this.overlay_thickness = 1;
+
         this.update();
         this.add_listeners();
+
     }
 
     info() {
@@ -71,7 +91,22 @@ class IPVizualizator {
     }
 
     create_api_call_url() {
-        return this.api + "/vizualizator/" + this.token + "/map/" + this.network + "/" + this.mask +"?resolution=" + this.resolution + "&skip_zeros=" + this.skip_zeros;
+        return this.api + "/vizualizator/" + this.token + "/map/" + this.network + "/" + this.mask +"?resolution=" + this.resolution + "&skip_zeros=" + this.skip_zeros + "&raw_data=true";
+    }
+
+    hilbert_i_to_xy(index, order) {
+        var state = 0
+        var x = 0
+        var y = 0
+
+        for (var it = 2 * order - 2; it > -2; it = it - 2) {
+            var row = 4 * state | ((index >> it) & 3)
+            x = (x << 1) | ((0x936C >> row) & 1)
+            y = (y << 1) | ((0x39C6 >> row) & 1)
+            state = (0x3E6B94C1 >> 2 * row) & 3
+        }
+
+        return [x, y]
     }
 
     genColor() {
@@ -99,8 +134,8 @@ class IPVizualizator {
     databind() {
         this.color_map.domain([parseFloat(this.network_data.min_value), parseFloat(this.network_data.max_value)]);
         
-        const pixel_width = Math.ceil(this.canvas_width / (2**this.network_data.hilbert_order));
-        const pixel_height = Math.ceil(this.canvas_height / (2**this.network_data.hilbert_order));
+        this.pixel_width = Math.floor(this.canvas_width / (2**this.network_data.hilbert_order));
+        this.pixel_height = Math.floor(this.canvas_height / (2**this.network_data.hilbert_order));
 
 
         var pixels = this.custom.selectAll("custom.rect").data(this.network_data.pixels);
@@ -115,9 +150,7 @@ class IPVizualizator {
             .attr("class", "rect");
             
         new_pixels
-            .attr("width", pixel_width)
-            .attr("height", pixel_height)
-            .attr("fillStyle", d => { 
+            .attr("fillStyle", d => {
                 var val = parseFloat(d.val)
                 return val == 0 ? "#000000" : this.color_map(val);
             })
@@ -128,21 +161,19 @@ class IPVizualizator {
                 }
                 return d.hiddenCol;
             })
-            .attr("x", function(d) {
-                return d.x * pixel_width;
+            .attr("x", d => {
+                return this.hilbert_i_to_xy(d.ip, this.network_data.hilbert_order)[0] * this.pixel_width;
             })
-            .attr("y", function(d) {
-                return d.y * pixel_height;
+            .attr("y", d => {
+                return this.hilbert_i_to_xy(d.ip, this.network_data.hilbert_order)[1] * this.pixel_height;
             });
 
         pixels
-            .attr("width", pixel_width)
-            .attr("height", pixel_height)
-            .attr("x", function(d) {
-                return d.x * pixel_width;
+            .attr("x", d => {
+                return this.hilbert_i_to_xy(d.ip, this.network_data.hilbert_order)[0] * this.pixel_width;
             })
-            .attr("y", function(d) {
-                return d.y * pixel_height;
+            .attr("y", d => {
+                return this.hilbert_i_to_xy(d.ip, this.network_data.hilbert_order)[1] * this.pixel_height;
             })
             .attr("fillStyle", d => { 
                 var val = parseFloat(d.val)
@@ -158,11 +189,11 @@ class IPVizualizator {
         
         var all_pixels = this.custom.selectAll("custom.rect");
 
-        if (pixel_width > 20 && this.bordered_pixel) {
-            all_pixels.attr("border", "bordered");
+        if (this.pixel_width > 20 && this.bordered_pixel) {
+            this.bordered_map = true;
         }
         else {
-            all_pixels.attr("border", "nobordered");
+            this.bordered_map = false;
        }
 
 
@@ -183,13 +214,13 @@ class IPVizualizator {
             
             var pixel = this.custom.select("custom.rect")
             
-            if(pixel.empty() == false && pixel.attr("border") == "bordered") {
+            if(pixel.empty() == false && this.bordered_map == true) {
                 var size = 2**this.network_data.hilbert_order
-                context.lineWidth = 2;
+                context.lineWidth = 1;
                 context.strokeStyle = "#C7C7C7";
                 for(var x = 0; x < size; x++) {
                     for(var y = 0; y < size; y++) {
-                        context.strokeRect(x*pixel.attr('width'), y*pixel.attr('height'), pixel.attr('width'), pixel.attr('height'));
+                        context.strokeRect(x*this.pixel_width, y*this.pixel_height, this.pixel_width, this.pixel_height);
                     }
                 }
             }
@@ -197,35 +228,65 @@ class IPVizualizator {
         
         var pixels = this.custom.selectAll("custom.rect");
 
+        var that = this
         pixels.each(function(d) {
             var pixel = d3.select(this);
             context.fillStyle = hidden ? pixel.attr('fillStyleHidden') : pixel.attr('fillStyle');
-            context.fillRect(pixel.attr('x'), pixel.attr('y'), pixel.attr('width'), pixel.attr('height'));
-            if(pixel.attr("border") == "bordered" && hidden == false) {
+            context.fillRect(pixel.attr('x'), pixel.attr('y'), that.pixel_width, that.pixel_height);
+            if(that.bordered_map == true && hidden == false) {
                 context.lineWidth = 2;
                 context.strokeStyle = "#C7C7C7";
-                context.strokeRect(pixel.attr('x'), pixel.attr('y'), pixel.attr('width'), pixel.attr('height'));
+                context.strokeRect(pixel.attr('x'), pixel.attr('y'), that.pixel_width, that.pixel_height);
             }
         });
-        //    if(this.actual_pixel != null && hidden == false) {
-        //        var pixel = d3.select(this.actual_pixel);
-        //        context.lineWidth = 1;
-        //        context.strokeStyle = "#FF0000";
-        //        context.strokeRect(pixel.attr('x'), pixel.attr('y'), pixel.attr('width'), pixel.attr('height'));
-        //    }
+
+        this.draw_overlay();
+    }
+
+    draw_overlay() {
+        var context = this.overlay_canvas_context;
+        context.clearRect(0, 0, this.canvas_width, this.canvas_height);
+        context.globalAlpha = 1.0 - this.map_opacity;
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, this.canvas_width, this.canvas_height);
+        context.globalAlpha = this.overlay_opacity;
+
+        if(this.zoomed_subnet != null) {
+            var coords = this.hilbert_i_to_xy(this.zoomed_subnet,this.network_data.hilbert_order);
+            var coords_next_index = this.hilbert_i_to_xy(this.zoomed_subnet+1,this.network_data.hilbert_order);
+            var size = 2**(this.network_data.hilbert_order - this.zoom_mask / 2)
+            size = size >= 1 ? size : 1;
+            var width = this.pixel_width * size;
+            var height = this.pixel_height * size;
+            context.lineWidth = this.overlay_thickness;
+            context.strokeStyle = "#ff0000";
+
+            if(coords[0] <= coords_next_index[0] && coords[1] <= coords_next_index[1]) {
+                context.strokeRect(coords[0] * this.pixel_width, coords[1] * this.pixel_height, width, height);
+            }
+            else {
+                context.strokeRect((coords[0] * this.pixel_width + this.pixel_width) - width, (coords[1]  * this.pixel_height + this.pixel_height) - height, width, height);
+            }
+        }
+        context.globalAlpha = 1.0;
     }
 
     zoom(d) {
-        this.network = d.ip.split("/")[0];
-        this.mask = d.ip.split("/")[1];
-        this.resolution = this.resolution + 8 <= 32 ? this.resolution + 8: 32;
-        
+        var ip = this.network_data.network + (this.zoomed_subnet << (32 - this.network_data.pixel_mask));
+        ip =  ( (ip>>>24) +'.' + (ip>>16 & 255) +'.' + (ip>>8 & 255) +'.' + (ip & 255) );
+        this.network = ip;
+        var new_mask = this.network_data.prefix_length + this.zoom_mask;
+        this.mask = new_mask <= 32 ? new_mask : 32;
+        var new_resolution = this.network_data.prefix_length + this.zoom_mask + 8 ;
+        this.resolution =  new_resolution <= 32 ? new_resolution : 32;
+        this.zoomed_subnet = null;
+
         this.update();
 
     }
     
     add_listeners() {
-        d3.select('.mainCanvas').on('mousemove',  d => {
+        d3.select('.overlayCanvas').on('mousemove',  d => {
             var mouseX = d3.event.layerX || d3.event.offsetX;
 			var mouseY = d3.event.layerY || d3.event.offsetY;
 			var hiddenCtx = this.hidden_canvas_context;
@@ -234,19 +295,26 @@ class IPVizualizator {
 			var colKey = 'rgb(' + col[0] + ',' + col[1] + ',' + col[2] + ')';
 
 			var pixelData = this.color_to_pixel[colKey];
-            //if(pixelData != this.actual_pixel) {
-            //    this.actual_pixel = pixelData;
-            //    this.draw(false);
-            //}
 			if (pixelData) {
+			    var ip = this.network_data.network + (pixelData.ip << (32 - this.network_data.pixel_mask)) >>> 0;
+                var ip_string =  ( (ip>>>24) +'.' + (ip>>16 & 255) +'.' + (ip>>8 & 255) +'.' + (ip & 255) );
+                var subnet_shift = this.network_data.pixel_mask - this.network_data.prefix_length - this.zoom_mask
+                var subnet = pixelData.ip >>  subnet_shift << subnet_shift
+                if(this.zoomed_subnet != subnet) {
+                    this.zoomed_subnet = subnet;
+                    this.draw_overlay();
+                }
 
-				d3.select('#tooltip')
+                d3.select('#tooltip')
 					.style('opacity', 0.8)
 					.style('top', d3.event.pageY + 5 + 'px')
 					.style('left', d3.event.pageX + 5 + 'px')
-					.html("<b>Network:</b> " + pixelData.ip + "<br /><b>Value:</b> " + pixelData.val );
-
+					.html("<b>Network:</b> " + ip_string + "/" + this.network_data.pixel_mask + "<br /><b>Value:</b> " + pixelData.val );
 			} else {
+                if(this.zoomed_subnet != null) {
+                    this.zoomed_subnet = null;
+                    this.draw_overlay();
+                }
 
 				d3.select('#tooltip')
 					.style('opacity', 0);
@@ -254,27 +322,19 @@ class IPVizualizator {
 			}
 
 		});
-        d3.select('.mainCanvas').on('click',  d => {
-            var mouseX = d3.event.layerX || d3.event.offsetX;
-			var mouseY = d3.event.layerY || d3.event.offsetY;
-			var hiddenCtx = this.hidden_canvas_context;
-
-			var col = hiddenCtx.getImageData(mouseX, mouseY, 1, 1).data;
-			var colKey = 'rgb(' + col[0] + ',' + col[1] + ',' + col[2] + ')';
-
-			var pixelData = this.color_to_pixel[colKey];
-            this.actual_pixel = null;
-
-			if (pixelData) {
-                this.zoom(pixelData);
+        d3.select('.overlayCanvas').on('click',  () => {
+			if (this.zoomed_subnet != null) {
+                this.zoom();
 			}
 
 		});
-        d3.select('.mainCanvas').on('mouseout',  d => {
+        d3.select('.overlayCanvas').on('mouseout',  d => {
 				d3.select('#tooltip')
 					.style('opacity', 0);
-		
-                this.actual_pixel = null;
+            if(this.zoomed_subnet != null) {
+                this.zoomed_subnet = null;
+                this.draw_overlay();
+            }
             });
     }
     

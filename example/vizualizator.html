@@ -14,29 +14,48 @@
   <body>
     <div class="container" style="margin-top: 20px;">
         <center><h1 class="display-4">IP vizualizator</h1></center>
-        <p> You can upload your own dataset on this page: <a href="send_dataset.html">Upload dataset</a></p>
-        <form>
+        
+        <p class="pt-4">IPVizualizator je interaktivní mapa, která zobrazuje hodnoty přiřazené k IP adresám pomocí Hilbertovy křivky.</p>
+        <h5 class="pt-4">Postup zobrazení svých dat:</h5>
+        <ol>
+            <li><a href="create_user.html">Na této stránce</a> is vytvořte uživatele, pod kterým budete data nahrávat. Okopírujte si authorizační token.</li>
+            <li><a href="send_dataset.html">Zde</a> nahrajte váš dataset v požadovaném formátu. Uložte si token reprezentující daný dataset.</li>
+            <li>Pomocí formuláře níže si můžete generovat mapy.</li>
+        </ol>
+        <form class="pt-4">
             <div class="form-group">
-                <label for="token">Dataset token</label>
+                <label for="token">Token datasetu</label>
                 <input type="text" class="form-control" id="token" value="5MC5TjetQf_Fu3Kjke_-2A">
             </div>
             <div class="form-group">
-                <label for="network">Network</label>
+                <label for="network">Síť</label>
                 <input type="text" class="form-control" id="network" value="0.0.0.0">
             </div>
             <div class="form-group">
-                <label for="mask">Mask</label>
+                <label for="mask">Maska sítě</label>
                 <input type="number" class="form-control" id="mask" value="0">
             </div>
             <div class="form-group">
-                <label for="resolution">Resolution</label>
+                <label for="resolution">Rozlišení</label>
                 <input type="number" class="form-control" id="resolution" value="16">
-                <small id="res-help" class="form-text text-muted">Mask of the subnet which results in 1px - not mandatory</small>
+                <small id="res-help" class="form-text text-muted">Maska podsítě, která se na mapě zobrazí jako 1 pixel. Nepovinné</small>
 
             </div>
-            <button type="button" id="form-send"  class="btn btn-primary">Show</button>
+            <div class="form-group">
+                <label for="width">Šířka obrázku</label>
+                <input type="number" class="form-control" id="width" value="800">
+            </div>
+            <div class="form-group">
+                <label for="height">Výška obrázku</label>
+                <input type="number" class="form-control" id="height" value="800">
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="skip_zeros">
+                <label class="form-check-label" for="skip_zeros">Neposílat pixely s nulovou hodnotou po síti</label>
+            </div>
+            <button type="button" id="form-send"  class="btn btn-primary">Zobrazit</button>
         </form>
-        <div id="canvas"></div>
+        <div id="canvas" style="position: relative;"></div>
         <div id="tooltip"></div>
     </div>
 
@@ -55,11 +74,11 @@
             "height": "800",
             "width": "800",
             "api": "http://127.0.0.1:8080/api/v1",
-            "token": "VZAnRgnUXQ0w5910fqYQVQ",
-            "network": "147.32.0.0",
-            "mask": 16,
-            "resolution": 24,
-            "test_mode": false,
+            "token": "5ILUnBwe5rh5X1jnH3GBsw",
+            "network": "0.0.0.0",
+            "mask": 0,
+            "resolution": 16,
+            "skip_zeros": false,
             "bordered_pixel": true
         });
 
@@ -68,17 +87,25 @@
             network = $("#network").val(vizualizator.network); 
             mask = $("#mask").val(vizualizator.mask); 
             resolution = $("#resolution").val(vizualizator.resolution);
+            width = $("#height").val(vizualizator.canvas_width); 
+            height = $("#width").val(vizualizator.canvas_height);
 
             $("#form-send").click(function(){
                 token = $("#token").val();
                 network = $("#network").val(); 
                 mask = $("#mask").val(); 
                 resolution = $("#resolution").val();
+                width = $("#height").val(); 
+                height = $("#width").val();
+                skip_zeros = false;
+                if($("#skip_zeros").is(":checked")) skip_zeros = true;
 
                 vizualizator.set_token(token);
                 vizualizator.set_network(network);
                 vizualizator.set_mask(mask);
                 vizualizator.set_resolution(resolution);
+                vizualizator.set_skip_zeros(skip_zeros);
+                vizualizator.set_canvas_size(width, height);
                 vizualizator.update();
             }); 
         }); 
