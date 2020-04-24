@@ -40,6 +40,7 @@ class IPVizualizator {
         this.map_opacity = 1.0;
         this.overlay_opacity = 1.0;
         this.overlay_thickness = 1;
+        this.overlay_subnets = [{"ip": 167772160, "mask": 8},{"ip": 2885681152, "mask": 12},{"ip": 2468347904, "mask": 16}, ];
 
         this.update();
         this.add_listeners();
@@ -128,6 +129,7 @@ class IPVizualizator {
             this.databind();
             this.draw(false);
             this.draw(true);
+            this.draw_overlay();
         });
     }
 
@@ -305,6 +307,40 @@ class IPVizualizator {
             context.fillText( subnet_text, x, y);
         }
         context.globalAlpha = 1.0;
+
+        // Overlay subnets
+        for(const subnet of this.overlay_subnets) {
+            var bit_shift = 32 - this.network_data.prefix_length;
+            var bit_mask = 0xFFFFFFFF;
+            bit_mask = bit_shift < 32 ? bit_mask << bit_shift >>> 0 : 0x0;
+            var ip_network = (subnet.ip & bit_mask) >>>0;
+            if(this.network_data.network == ip_network) {
+                var ip = (subnet.ip >> 32-this.network_data.pixel_mask) << 32-this.network_data.pixel_mask>>>0;
+                var index = (ip-this.network_data.network) >>> 32 - this.network_data.pixel_mask;
+                var coords = this.hilbert_i_to_xy(index, this.network_data.hilbert_order);
+                var coords_next_index = this.hilbert_i_to_xy(index+1,this.network_data.hilbert_order);
+                var size = 2**(this.network_data.hilbert_order - (subnet.mask - this.network_data.prefix_length) / 2)
+                size = size >= 1 ? size : 1;
+                var width = this.pixel_width * size;
+                var height = this.pixel_height * size;
+                context.lineWidth = this.overlay_thickness;
+                context.strokeStyle = "#ffff00";
+
+                var x = 0;
+                var y = 0;
+                if(coords[0] <= coords_next_index[0] && coords[1] <= coords_next_index[1]) {
+                    x = coords[0] * this.pixel_width;
+                    y = coords[1] * this.pixel_height;
+                }
+                else {
+                    x = (coords[0] * this.pixel_width + this.pixel_width) - width;
+                    y = (coords[1]  * this.pixel_height + this.pixel_height) - height;
+                }
+                context.strokeRect(x, y, width, height);
+
+            }
+
+        }
     }
 
     zoom(d) {
