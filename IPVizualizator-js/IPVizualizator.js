@@ -1,34 +1,52 @@
 class IPVizualizator {
-    
+
     constructor(args) {
-        this.canvas_height = args.height;
-        this.canvas_width = args.width;
+        this.Size = {"small": 512, "regular": 768, "large": 1024, "xlarge": 4096};
+        this.canvas_size = args.size in this.Size ? this.Size[args.size] : this.Size.regular;
         this.token = args.token;
-        this.canvas = d3.select(args.canvas).append('canvas')
+
+        this.container = d3.select(args.id).classed('card', true).style('width', (this.canvas_size + 2) + 'px');
+        this.header = this.container.append('div').classed('card-header', true).style('width', this.canvas_size + 'px').style('padding-left', '10px').style('padding-right', '10px');
+        this.header_row = this.header.append('div').classed('row', true);
+
+        this.button_back = this.header_row.append('div').classed('col-sm', true).append('div').classed('buttonBack align-middle border-right',true).style('padding-right', '5px').style('width', '30px');
+        this.button_back_svg = this.button_back.append('svg').attr('viewBox', '0 0 8 8').style('height', '100%').style('width', '100%').append('path').attr('d', 'M4.5 0c-1.93 0-3.5 1.57-3.5 3.5v.5h-1l2 2 2-2h-1v-.5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5c0-1.93-1.57-3.5-3.5-3.5z').attr('transform','translate(0 1)');
+        this.network_heading = this.header_row.append('div').classed('col-sm align-middle',true).style('text-align', 'center').style('font-size', '20px');
+        this.menu = this.header_row.append('div').classed('col-sm',true);
+        this.map = this.container.append('div').classed('canvases', true).attr('style', 'position: relative;')
+                .style('width', this.canvas_size+'px')
+                .style('height', this.canvas_size+'px');
+
+        this.canvas = this.map.append('canvas')
                         .classed('mainCanvas', true)
-                        .attr('width', this.canvas_width)
-                        .attr('height', this.canvas_height)
-                        .attr('style', 'position: absolute; left: 0; top: 0; z-index: 0; background-color: transparent;');
+                        .attr('width', this.canvas_size)
+                        .attr('height', this.canvas_size)
+                        .attr('style', 'position: absolute; left: 0; top: 0; z-index: 0; background-color: transparent;')
+                        .style('width', this.canvas_size+'px')
+                        .style('height', this.canvas_size+'px');
         this.canvas_context = this.canvas.node().getContext('2d');
-        this.overlay_canvas = d3.select(args.canvas).append('canvas')
+        this.overlay_canvas = this.map.append('canvas')
             .classed('overlayCanvas', true)
-            .attr('width', this.canvas_width)
-            .attr('height', this.canvas_height)
-            .attr('style', 'position: absolute; left: 0; top: 0; z-index: 1; background-color: transparent;');
+            .attr('width', this.canvas_size)
+            .attr('height', this.canvas_size)
+            .attr('style', 'position: absolute; left: 0; top: 0; z-index: 1; background-color: transparent;')
+            .style('width', this.canvas_size+'px')
+            .style('height', this.canvas_size+'px');
         this.overlay_canvas_context = this.overlay_canvas.node().getContext('2d');
 
+        this.static = false;
         var customBase = document.createElement("custom");
         this.custom = d3.select(customBase);
         this.api = args.api;
         this.network = args.network;
         this.mask = args.mask;
         this.resolution = args.resolution;
-        this.skip_zeros = args.skip_zeros;
+        this.skip_zeros = "skip_zeros" in args ? args.skip_zeros : false;
         this.bordered_pixel = 'bordered_pixel' in args ? args.bordered_pixel : true;
 
         this.network_data = {};
         this.color_map = d3.scaleSequential().interpolator(d3.interpolateViridis);
-        this.hidden_canvas = d3.select(args.canvas).append('canvas').classed('hiddenCanvas', true).attr('style', 'display: none;').attr('width',this.canvas_width).attr('height', this.canvas_height);
+        this.hidden_canvas = this.map.append('canvas').classed('hiddenCanvas', true).attr('style', 'display: none;').attr('width',this.canvas_size).attr('height', this.canvas_size);
         this.hidden_canvas_context = this.hidden_canvas.node().getContext('2d');
         this.nextCol = 1;
         this.color_to_pixel = {};
@@ -40,7 +58,31 @@ class IPVizualizator {
         this.map_opacity = 1.0;
         this.overlay_opacity = 1.0;
         this.overlay_thickness = 1;
-        this.overlay_subnets = [{"ip": 167772160, "mask": 8},{"ip": 2885681152, "mask": 12},{"ip": 2468347904, "mask": 16}, ];
+
+
+        this.overlay_subnets = []
+        if("overlay_networks" in args) {
+            for (const net of args.overlay_networks) {
+                var ip = net.network.split("/")[0];
+                var mask = parseInt(net.network.split("/")[1]);
+                ip = ip.split('.').reduce(function (ipInt, octet) {
+                    return (ipInt << 8) + parseInt(octet, 10)
+                }, 0) >>> 0;
+                var subnet = {"text": net.text, "ip": ip, "mask": mask};
+                if ("text_position" in net) subnet.text_position = net.text_position;
+                if ("color" in net) subnet.color = net.color;
+                this.overlay_subnets.push(subnet);
+            }
+        }
+
+        this.overlay_color = "#ffff00";
+        this.overlay_text_position = "in";
+        this.overlay_show = true;
+        this.zoom_opacity = 1.0;
+        this.zoom_thickness = 1;
+        this.zoom_color = "#ff0000";
+
+        this.network_history = [];
 
         this.update();
         this.add_listeners();
@@ -75,16 +117,26 @@ class IPVizualizator {
         this.skip_zeros = skip_zeros;
     }
     
-    set_canvas_size(width, height) {
+    set_canvas_size(size) {
+        size = size in this.Size ? this.Size[size] : this.canvas_size;
+        if(size == this.canvas_size) return;
+
         var context = this.canvas_context;
         var hidden_context = this.hidden_canvas_context;
-        context.clearRect(0, 0, this.canvas_width, this.canvas_height);
-        hidden_context.clearRect(0, 0, this.canvas_width, this.canvas_height);
-        
-        this.canvas_width = width;
-        this.canvas_height = height;
-        this.canvas.attr('width', this.canvas_width).attr('height', this.canvas_height);
-        this.hidden_canvas.attr('width', this.canvas_width).attr('height', this.canvas_height);
+        var overlay_context = this.overlay_canvas_context;
+        context.clearRect(0, 0, this.canvas_size, this.canvas_size);
+        hidden_context.clearRect(0, 0, this.canvas_size, this.canvas_size);
+        overlay_context.clearRect(0, 0, this.canvas_size, this.canvas_size);
+
+        this.canvas_size = size;
+        this.canvas.attr('width', this.canvas_size).attr('height', this.canvas_size).style('width', this.canvas_size+'px')
+                .style('height', this.canvas_size+'px');
+        this.hidden_canvas.attr('width', this.canvas_size).attr('height', this.canvas_size);
+        this.overlay_canvas.attr('width', this.canvas_size).attr('height', this.canvas_size).style('width', this.canvas_size+'px')
+                .style('height', this.canvas_size+'px');
+        this.map.style('width', this.canvas_size+'px').style('height', this.canvas_size+'px');
+        this.container.style('width', (this.canvas_size + 2) + 'px');
+        this.header.style('width', this.canvas_size + 'px');
     }
 
     get_network_data() {
@@ -130,14 +182,15 @@ class IPVizualizator {
             this.draw(false);
             this.draw(true);
             this.draw_overlay();
+            this.draw_menu();
         });
     }
 
     databind() {
         this.color_map.domain([parseFloat(this.network_data.min_value), parseFloat(this.network_data.max_value)]);
         
-        this.pixel_width = Math.floor(this.canvas_width / (2**this.network_data.hilbert_order));
-        this.pixel_height = Math.floor(this.canvas_height / (2**this.network_data.hilbert_order));
+        this.pixel_width = Math.floor(this.canvas_size / (2**this.network_data.hilbert_order));
+        this.pixel_height = Math.floor(this.canvas_size / (2**this.network_data.hilbert_order));
 
 
         var pixels = this.custom.selectAll("custom.rect").data(this.network_data.pixels);
@@ -207,12 +260,12 @@ class IPVizualizator {
         if(hidden) {
             context = this.hidden_canvas_context;
         }
-        context.clearRect(0, 0, this.canvas_width, this.canvas_height);
+        context.clearRect(0, 0, this.canvas_size, this.canvas_size);
         
         
         if(hidden == false && this.skip_zeros == true) {
             context.fillStyle = "#000000";
-            context.fillRect(0, 0, this.canvas_width, this.canvas_height);
+            context.fillRect(0, 0, this.canvas_size, this.canvas_size);
             
             var pixel = this.custom.select("custom.rect")
             
@@ -247,21 +300,105 @@ class IPVizualizator {
 
     draw_overlay() {
         var context = this.overlay_canvas_context;
-        context.clearRect(0, 0, this.canvas_width, this.canvas_height);
+        context.clearRect(0, 0, this.canvas_size, this.canvas_size);
         context.globalAlpha = 1.0 - this.map_opacity;
         context.fillStyle = "#ffffff";
-        context.fillRect(0, 0, this.canvas_width, this.canvas_height);
+        context.fillRect(0, 0, this.canvas_size, this.canvas_size);
+        context.shadowColor = "#6a6a6a";
+        context.shadowBlur = 4;
+        context.shadowOffsetX = 1;
+        context.shadowOffsetY = 1;
+
         context.globalAlpha = this.overlay_opacity;
 
-        if(this.zoomed_subnet != null) {
+        // Overlay subnets
+        if(this.overlay_show == true) {
+            for (const subnet of this.overlay_subnets) {
+                var bit_shift = 32 - this.network_data.prefix_length;
+                var bit_mask = 0xFFFFFFFF;
+                bit_mask = bit_shift < 32 ? bit_mask << bit_shift >>> 0 : 0x0;
+                var ip_network = (subnet.ip & bit_mask) >>> 0;
+                if (this.network_data.network == ip_network) {
+                    var ip = (subnet.ip >> 32 - this.network_data.pixel_mask) << 32 - this.network_data.pixel_mask >>> 0;
+                    var index = (ip - this.network_data.network) >>> 32 - this.network_data.pixel_mask;
+                    var coords = this.hilbert_i_to_xy(index, this.network_data.hilbert_order);
+                    var coords_next_index = this.hilbert_i_to_xy(index + 1, this.network_data.hilbert_order);
+                    var size = 2 ** (this.network_data.hilbert_order - (subnet.mask - this.network_data.prefix_length) / 2)
+                    size = size >= 1 ? size : 1;
+                    var width = this.pixel_width * size;
+                    var height = this.pixel_height * size;
+                    context.lineWidth = this.overlay_thickness;
+                    context.strokeStyle = "color" in subnet ? subnet.color : this.overlay_color;
+
+                    var x = 0;
+                    var y = 0;
+                    if (coords[0] <= coords_next_index[0] && coords[1] <= coords_next_index[1]) {
+                        x = coords[0] * this.pixel_width;
+                        y = coords[1] * this.pixel_height;
+                    } else {
+                        x = (coords[0] * this.pixel_width + this.pixel_width) - width;
+                        y = (coords[1] * this.pixel_height + this.pixel_height) - height;
+                    }
+                    context.strokeRect(x, y, width, height);
+
+                    if("text" in subnet) {
+                        var position = "text_position" in subnet ? subnet.text_position : this.overlay_text_position;
+                        context.fillStyle = "color" in subnet ? subnet.color : this.overlay_color;
+                        var font_size = Math.floor(width * 0.15);
+
+                        if(position == "in") {
+                            context.font = "bold " + font_size + "px Arial";
+                            x = x + width / 2;
+                            context.textAlign = "center";
+                            context.textBaseline = "middle";
+                            y = y + height / 2;
+                        }
+                        else {
+                            context.font = "bold 20px Arial";
+                            font_size = 20;
+                            var text_width = context.measureText(subnet.text).width;
+
+                            if (y < 25) {
+                                context.textBaseline = "top";
+                                y = y + height + 2;
+                            } else {
+                                context.textBaseline = "bottom";
+                            }
+                            if (x + width / 2 + text_width / 2 > this.canvas_size) {
+                                context.textAlign = "right";
+                                x = this.canvas_size - 3;
+
+                            } else if (x + width / 2 - text_width / 2 < 0) {
+                                context.textAlign = "left";
+                                x = 3;
+                            } else {
+                                x = x + width / 2;
+                                context.textAlign = "center";
+                            }
+                        }
+                        var lines = subnet.text.split('\n');
+                        for(const line of lines) {
+                            context.fillText(line, x, y);
+                            y += font_size;
+                        }
+                    }
+
+                }
+
+            }
+        }
+
+        context.globalAlpha = this.zoom_opacity;
+
+        if(this.zoomed_subnet != null && this.static == false) {
             var coords = this.hilbert_i_to_xy(this.zoomed_subnet,this.network_data.hilbert_order);
             var coords_next_index = this.hilbert_i_to_xy(this.zoomed_subnet+1,this.network_data.hilbert_order);
             var size = 2**(this.network_data.hilbert_order - this.zoom_mask / 2)
             size = size >= 1 ? size : 1;
             var width = this.pixel_width * size;
             var height = this.pixel_height * size;
-            context.lineWidth = this.overlay_thickness;
-            context.strokeStyle = "#ff0000";
+            context.lineWidth = this.zoom_thickness;
+            context.strokeStyle = this.zoom_color;
 
             var x = 0;
             var y = 0;
@@ -275,7 +412,7 @@ class IPVizualizator {
             }
             context.strokeRect(x, y, width, height);
 
-            context.fillStyle = "#ff0000";
+            context.fillStyle = this.zoom_color;
             context.font = "bold 20px Arial";
             var ip = this.network_data.network + (this.zoomed_subnet << (32 - this.network_data.pixel_mask));
             ip =  ( (ip>>>24) +'.' + (ip>>16 & 255) +'.' + (ip>>8 & 255) +'.' + (ip & 255) );
@@ -291,9 +428,9 @@ class IPVizualizator {
             else {
                 context.textBaseline = "bottom";
             }
-            if(x+width/2+text_width/2 > this.canvas_width) {
+            if(x+width/2+text_width/2 > this.canvas_size) {
                 context.textAlign = "right";
-                x = this.canvas_width - 3;
+                x = this.canvas_size - 3;
 
             }
             else if(x+width/2-text_width/2 < 0) {
@@ -306,44 +443,19 @@ class IPVizualizator {
             }
             context.fillText( subnet_text, x, y);
         }
+
         context.globalAlpha = 1.0;
+        context.shadowBlur = 0;
+        context.shadowOffsetX = 0;
+        context.shadowOffsetY = 0;
+    }
 
-        // Overlay subnets
-        for(const subnet of this.overlay_subnets) {
-            var bit_shift = 32 - this.network_data.prefix_length;
-            var bit_mask = 0xFFFFFFFF;
-            bit_mask = bit_shift < 32 ? bit_mask << bit_shift >>> 0 : 0x0;
-            var ip_network = (subnet.ip & bit_mask) >>>0;
-            if(this.network_data.network == ip_network) {
-                var ip = (subnet.ip >> 32-this.network_data.pixel_mask) << 32-this.network_data.pixel_mask>>>0;
-                var index = (ip-this.network_data.network) >>> 32 - this.network_data.pixel_mask;
-                var coords = this.hilbert_i_to_xy(index, this.network_data.hilbert_order);
-                var coords_next_index = this.hilbert_i_to_xy(index+1,this.network_data.hilbert_order);
-                var size = 2**(this.network_data.hilbert_order - (subnet.mask - this.network_data.prefix_length) / 2)
-                size = size >= 1 ? size : 1;
-                var width = this.pixel_width * size;
-                var height = this.pixel_height * size;
-                context.lineWidth = this.overlay_thickness;
-                context.strokeStyle = "#ffff00";
-
-                var x = 0;
-                var y = 0;
-                if(coords[0] <= coords_next_index[0] && coords[1] <= coords_next_index[1]) {
-                    x = coords[0] * this.pixel_width;
-                    y = coords[1] * this.pixel_height;
-                }
-                else {
-                    x = (coords[0] * this.pixel_width + this.pixel_width) - width;
-                    y = (coords[1]  * this.pixel_height + this.pixel_height) - height;
-                }
-                context.strokeRect(x, y, width, height);
-
-            }
-
-        }
+    draw_menu() {
+        this.network_heading.html("<b>" + this.network + "/" + this.mask + "</b>");
     }
 
     zoom(d) {
+        this.network_history.push([this.network, this.mask, this.resolution]);
         var ip = this.network_data.network + (this.zoomed_subnet << (32 - this.network_data.pixel_mask));
         ip =  ( (ip>>>24) +'.' + (ip>>16 & 255) +'.' + (ip>>8 & 255) +'.' + (ip & 255) );
         this.network = ip;
@@ -397,7 +509,7 @@ class IPVizualizator {
 
 		});
         d3.select('.overlayCanvas').on('click',  () => {
-			if (this.zoomed_subnet != null) {
+			if (this.zoomed_subnet != null && this.static == false) {
                 this.zoom();
 			}
 
@@ -410,6 +522,40 @@ class IPVizualizator {
                 this.draw_overlay();
             }
             });
+        d3.select('.buttonBack').on('mouseout',  d => {
+            this.button_back_svg.attr('fill', 'black');
+            d3.select('#tooltip').style('opacity', 0);
+        });
+        d3.select('.buttonBack').on('mouseover',  d => {
+            if(this.network_history.length != 0) {
+                var last_network = this.network_history[this.network_history.length -1];
+                this.button_back_svg.attr('fill', '#ff9600');
+                d3.select('#tooltip')
+                    .style('opacity', 0.8)
+                    .style('top', d3.event.pageY + 5 + 'px')
+                    .style('left', d3.event.pageX + 5 + 'px')
+                    .html("Return back to network <b>" + last_network[0] + "/" + last_network[1] + "</b>");
+            }
+            else {
+                d3.select('#tooltip')
+                    .style('opacity', 0.8)
+                    .style('top', d3.event.pageY + 5 + 'px')
+                    .style('left', d3.event.pageX + 5 + 'px')
+                    .html("No history - can't go back");
+            }
+        });
+        d3.select('.buttonBack').on('click',  d => {
+            if(this.network_history != 0) {
+                var last_network = this.network_history[this.network_history.length -1];
+                this.network_history.pop();
+                this.button_back_svg.attr('fill', '#aa6802');
+                this.network = last_network[0];
+                this.mask = last_network[1];
+                this.resolution = last_network[2];
+                this.zoomed_subnet = null;
+                this.update();
+            }
+        });
     }
     
 }

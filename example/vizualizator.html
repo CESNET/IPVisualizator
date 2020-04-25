@@ -42,12 +42,13 @@
 
             </div>
             <div class="form-group">
-                <label for="width">Šířka obrázku</label>
-                <input type="number" class="form-control" id="width" value="800">
-            </div>
-            <div class="form-group">
-                <label for="height">Výška obrázku</label>
-                <input type="number" class="form-control" id="height" value="800">
+                <label for="size">Rozměry mapy</label>
+                    <select class="form-control" id="size">
+                        <option value="small">small (512x512px)</option>
+                        <option value="regular" selected="selected">regular (768x768px)</option>
+                        <option value="large">large (1024x1024px)</option>
+                        <option value="xlarge">xlarge (4096x4096)</option>
+                    </select>
             </div>
             <div class="form-group form-check">
                 <input type="checkbox" class="form-check-input" id="skip_zeros">
@@ -55,31 +56,80 @@
             </div>
             <button type="button" id="form-send"  class="btn btn-primary">Zobrazit</button>
         </form>
-        <div id="canvas" style="position: relative;"></div>
+        <div id="map"></div>
+        <p> Dalsi tabulka je hned pod ni</p>
+        <div id="map2"></div>
         <div id="tooltip"></div>
     </div>
 
 
     <!-- Optional JavaScript -->
-    <!-- jQuery first, then Popper.js, Bootstrap JS, D3.js -->
+    <!-- jQuery first, Bootstrap JS, D3.js -->
     <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
     <script src="https://d3js.org/d3.v5.min.js"></script>
     <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
     <script src="../IPVizualizator-js/IPVizualizator.js"></script>
-    <script> 
+    <script>
+        //const vizualizator2 = new IPVizualizator({
+        //    "id": "#map2",
+        //    "size": "regular",
+        //    "api": "http://127.0.0.1:8080/api/v1",
+        //    "token": "5ILUnBwe5rh5X1jnH3GBsw",
+        //    "network": "147.0.0.0",
+        //    "mask": 8,
+        //    "resolution": 16
+        //});
         const vizualizator = new IPVizualizator({
-            "canvas": "#canvas",
-            "height": "768",
-            "width": "768",
+            "id": "#map",
+            "size": "regular",
             "api": "http://127.0.0.1:8080/api/v1",
             "token": "5ILUnBwe5rh5X1jnH3GBsw",
             "network": "0.0.0.0",
             "mask": 0,
             "resolution": 16,
             "skip_zeros": false,
-            "bordered_pixel": true
+            "bordered_pixel": true,
+            "overlay_networks": [
+                {
+                    "text": "Reserved",
+                    "network": "0.0.0.0/8"
+                },
+                {
+                    "text": "Unallocated",
+                    "network": "1.0.0.0/8"
+                },
+                {
+                    "text": "Public\nData Network",
+                    "network": "14.0.0.0/8"
+                },
+                {
+                    "text": "GE",
+                    "network": "3.0.0.0/8"
+                },
+                {
+                    "text": "Unallocated",
+                    "network": "2.0.0.0/8"
+                },
+                {
+                    "text": "Xerox",
+                    "network": "13.0.0.0/8",
+                    "text_position": "out",
+                    "color": "#123999"
+                },
+                {
+                    "text": "RIPE",
+                    "network": "80.0.0.0/4"
+                },
+                {
+                    "text": "Multicast",
+                    "network": "224.0.0.0/4"
+                },
+                {
+                    "text": "Reserved",
+                    "network": "240.0.0.0/4"
+                }
+            ]
         });
 
         $(document).ready(function(){
@@ -87,16 +137,13 @@
             network = $("#network").val(vizualizator.network); 
             mask = $("#mask").val(vizualizator.mask); 
             resolution = $("#resolution").val(vizualizator.resolution);
-            width = $("#height").val(vizualizator.canvas_width); 
-            height = $("#width").val(vizualizator.canvas_height);
 
             $("#form-send").click(function(){
                 token = $("#token").val();
                 network = $("#network").val(); 
                 mask = $("#mask").val(); 
                 resolution = $("#resolution").val();
-                width = $("#height").val(); 
-                height = $("#width").val();
+                size = $("#size").val();
                 skip_zeros = false;
                 if($("#skip_zeros").is(":checked")) skip_zeros = true;
 
@@ -105,7 +152,7 @@
                 vizualizator.set_mask(mask);
                 vizualizator.set_resolution(resolution);
                 vizualizator.set_skip_zeros(skip_zeros);
-                vizualizator.set_canvas_size(width, height);
+                vizualizator.set_canvas_size(size);
                 vizualizator.update();
             }); 
         }); 
