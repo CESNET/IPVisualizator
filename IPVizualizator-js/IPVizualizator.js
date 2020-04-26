@@ -13,21 +13,43 @@ class IPVizualizator {
         this.button_back_svg = this.button_back.append('svg').attr('viewBox', '0 0 8 8').style('height', '100%').style('width', '100%').append('path').attr('d', 'M4.5 0c-1.93 0-3.5 1.57-3.5 3.5v.5h-1l2 2 2-2h-1v-.5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5c0-1.93-1.57-3.5-3.5-3.5z').attr('transform','translate(0 1)');
         this.network_heading = this.header_row.append('div').classed('network-heading col-sm align-middle',true).style('text-align', 'center').style('font-size', '20px').style('cursor', 'pointer');
         this.menu = this.header_row.append('div').classed('col-sm',true);
+        this.button_config = this.menu.append('div').classed('button-config align-middle border-left float-right',true).style('padding-left', '5px').style('width', '30px').style('cursor', 'pointer');
+        this.button_config_svg = this.button_config.append('svg').attr('viewBox', '0 0 8 8').style('height', '100%').style('width', '100%').append('path').attr('d', 'M3.5 0l-.5 1.19c-.1.03-.19.08-.28.13l-1.19-.5-.72.72.5 1.19c-.05.1-.09.18-.13.28l-1.19.5v1l1.19.5c.04.1.08.18.13.28l-.5 1.19.72.72 1.19-.5c.09.04.18.09.28.13l.5 1.19h1l.5-1.19c.09-.04.19-.08.28-.13l1.19.5.72-.72-.5-1.19c.04-.09.09-.19.13-.28l1.19-.5v-1l-1.19-.5c-.03-.09-.08-.19-.13-.28l.5-1.19-.72-.72-1.19.5c-.09-.04-.19-.09-.28-.13l-.5-1.19h-1zm.5 2.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z');
         this.map = this.container.append('div').classed('canvases', true).attr('style', 'position: relative;')
                 .style('width', this.canvas_size+'px')
                 .style('height', this.canvas_size+'px');
 
 
-        this.modal_network = this.map.append('div').classed('card', true).style('width', '470px').style('height', '130px').style('position', 'absolute').style('left', (this.canvas_size - 470)/2 +'px').style('top', '20px').style('z-index', '2');
-        this.modal_network_header = this.modal_network.append('h5').classed('card-header', true).html('Network');
+        this.modal_network = this.map.append('div').classed('card', true).style('width', '470px').style('height', '100px').style('position', 'absolute').style('left', (this.canvas_size - 470)/2 +'px').style('top', '0px').style('z-index', '2');
         this.modal_network_body = this.modal_network.append('div').classed('card-body', true);
         this.modal_network_form = this.modal_network_body.append('div').classed('form', true).append('div').classed('form-group', true);
         this.modal_network_form.append('label').attr('for', 'network_input').html("Network");
-        this.modal_network_form_network = this.modal_network_form.append('input').attr('id', 'network_input').attr('placeholder', '0.0.0.0/0').style('margin-left', '10px');
+        this.modal_network_form_network = this.modal_network_form.append('input').attr('id', 'network_input').attr('placeholder', '0.0.0.0/0').style('margin-left', '10px').style('padding-left', '5px');
 
-        this.modal_network_button_set = this.modal_network_form.append('button').classed('set btn btn-warning', true).html('Set').style('margin-left', '10px');
-        this.modal_network_button_cancel = this.modal_network_form.append('button').classed('cancel btn btn-secondary', true).html('Cancel').style('margin-left', '10px');
+        this.modal_network_button_set = this.modal_network_form.append('button').classed('set btn btn-primary', true).html('Set').style('margin-left', '10px');
+        this.modal_network_button_cancel = this.modal_network_form.append('button').classed('cancel btn btn-secondary', true).html('Close').style('margin-left', '10px');
+        this.modal_network_error = this.modal_network_body.append('p').classed('text-danger text-center font-weight-bold', true).style('margin-top', '-10px');
+        this.modal_network.style('opacity', '0.95');
         this.modal_network.style('display', 'none');
+
+
+        this.modal_config = this.map.append('div').classed('card', true).style('width', '280px').style('height', '200px').style('position', 'absolute').style('left', (this.canvas_size - 280) +'px').style('top', '0px').style('z-index', '3');
+        this.modal_config_body = this.modal_config.append('div').classed('card-body', true);
+
+        this.modal_config_resolution = this.modal_config_body.append('div').classed('row', true);
+        this.modal_config_resolution_label = this.modal_config_resolution.append('div').classed('col', true).append('label').attr('for', 'resolution_range').html("Resolution");
+        this.modal_config_resolution_range = this.modal_config_resolution.append('div').classed('col', true).append('div').style('width', '60px').append('input').attr('type', 'range').classed('custom-range', true).attr('id', 'resolution_range').attr('step', 2);
+        this.modal_config_resolution_value = this.modal_config_resolution.append('div').classed('col', true).append('span').classed('font-weight-bold text-primary', true);
+
+        this.modal_config_zoom = this.modal_config_body.append('div').classed('row', true);
+        this.modal_config_zoom_label = this.modal_config_zoom.append('div').classed('col', true).append('label').attr('for', 'zoom_range').html("Zoom");
+        this.modal_config_zoom_range = this.modal_config_zoom.append('div').classed('col', true).append('div').style('margin-left', '32px').style('width', '60px').append('input').attr('type', 'range').classed('custom-range', true).attr('id', 'zoom_range').attr('step', 2);
+        this.modal_config_zoom_value = this.modal_config_zoom.append('div').classed('col', true).append('span').classed('font-weight-bold text-primary', true);
+
+        this.modal_config_button_cancel = this.modal_config_body.append('button').classed('cancel btn btn-secondary', true).html('Close').style('margin-left', '85px').style('margin-top', '20px');
+
+        this.modal_config.style('opacity', '0.95');
+        this.modal_config.style('display', 'none');
 
         this.canvas = this.map.append('canvas')
                         .classed('mainCanvas', true)
@@ -150,6 +172,7 @@ class IPVizualizator {
         this.container.style('width', (this.canvas_size + 2) + 'px');
         this.header.style('width', this.canvas_size + 'px');
         this.modal_network.style('left', (this.canvas_size - 470)/2 +'px');
+        this.modal_config.style('left', (this.canvas_size - 280) +'px');
     }
 
     get_network_data() {
@@ -543,7 +566,7 @@ class IPVizualizator {
         this.button_back.on('mousemove',  d => {
             if(this.network_history.length != 0) {
                 var last_network = this.network_history[this.network_history.length -1];
-                this.button_back_svg.attr('fill', '#ff9600');
+                this.button_back_svg.attr('fill', '#0275d8');
                 this.button_back.style('cursor', 'pointer');
                 d3.select('#tooltip')
                     .style('opacity', 0.8)
@@ -563,7 +586,7 @@ class IPVizualizator {
             if(this.network_history != 0) {
                 var last_network = this.network_history[this.network_history.length -1];
                 this.network_history.pop();
-                this.button_back_svg.attr('fill', '#aa6802');
+                this.button_back_svg.attr('fill', '#04407f');
                 this.network = last_network[0];
                 this.mask = last_network[1];
                 this.resolution = last_network[2];
@@ -576,7 +599,7 @@ class IPVizualizator {
             d3.select('#tooltip').style('opacity', 0);
         });
         this.network_heading.on('mousemove',  d => {
-            this.network_heading.style('color', '#ff9600');
+            this.network_heading.style('color', '#0275d8');
             d3.select('#tooltip')
                 .style('opacity', 0.8)
                 .style('top', d3.event.pageY + 5 + 'px')
@@ -584,11 +607,95 @@ class IPVizualizator {
                 .html("Change displayed network");
         });
         this.network_heading.on('click',  d => {
-            this.modal_network_form_network.attr('placeholder', this.network + "/" + this.mask);
-            this.modal_network.style('display', 'initial');
+            if(this.modal_network.style('display') == 'none') {
+                this.modal_network_form_network.attr('placeholder', this.network + "/" + this.mask);
+                this.modal_network.style('display', 'initial');
+                this.modal_config.style('display', 'none');
+            }
+            else {
+                this.modal_network.style('display', 'none');
+            }
         });
         this.modal_network_button_cancel.on('click',  d => {
             this.modal_network.style('display', 'none');
+        });
+        this.modal_network_button_set.on('click',  d => {
+            this.modal_network_error.html('');
+            var network_string = this.modal_network_form_network.node().value;
+            var network = network_string.split("/");
+            if(network.length != 2) {
+                this.modal_network_error.html('Wrong format: Required format {network IP}/{mask}');
+                return;
+            }
+            if(network[0].match('^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$') == null) {
+                this.modal_network_error.html('Network is not IPv4 address');
+                return;
+            }
+            if(isNaN(network[1])) {
+                this.modal_network_error.html('Network mask is not integer');
+                return;
+            }
+            var mask = parseInt(network[1]);
+            if(mask % 2 == 1 || mask < 0 || mask  > 32) {
+                this.modal_network_error.html('Network mask is odd or invalid');
+                return;
+            }
+            var ip = network[0].split('.').reduce(function (ipInt, octet) {
+                return (ipInt << 8) + parseInt(octet, 10)
+            }, 0) >>> 0;
+            var network_portion = ip >>> (32-mask) << (32-mask) >>>0;
+
+            if(ip != network_portion) {
+                this.modal_network_error.html('IP is not valid network address');
+                return;
+            }
+
+            this.network_history.push([this.network, this.mask, this.resolution]);
+            this.network = network[0];
+            this.mask = mask;
+            this.resolution = mask + 8 <= 32 ? mask + 8 : 32;
+            this.zoomed_subnet = null;
+
+            this.modal_network_error.html('');
+            this.modal_network_form_network.property('value', '');
+            this.modal_network.style('display', 'none');
+
+            this.update();
+        });
+        this.button_config.on('mouseout',  d => {
+            this.button_config_svg.attr('fill', 'black');
+            d3.select('#tooltip').style('opacity', 0);
+        });
+        this.button_config.on('mousemove',  d => {
+            this.button_config_svg.attr('fill', '#0275d8');
+            d3.select('#tooltip')
+                .style('opacity', 0.8)
+                .style('top', d3.event.pageY + 5 + 'px')
+                .style('left', d3.event.pageX + 5 + 'px')
+                .html("Configure map");
+        });
+
+        this.button_config.on('click',  d => {
+            if(this.modal_config.style('display') == 'none') {
+
+                this.modal_config_resolution_range.property('value', '');
+
+
+                this.modal_config.style('display', 'initial');
+                this.modal_network.style('display', 'none');
+            }
+            else {
+                this.modal_config.style('display', 'none');
+            }
+        });
+        this.modal_config_resolution_range.on('input',  d => {
+            this.modal_config_resolution_value.html('+'+ this.modal_config_resolution_range.node().value);
+        });
+        this.modal_config_zoom_range.on('input',  d => {
+            this.modal_config_zoom_value.html('+'+ this.modal_config_zoom_range.node().value);
+        });
+        this.modal_config_button_cancel.on('click',  d => {
+            this.modal_config.style('display', 'none');
         });
     }
     
