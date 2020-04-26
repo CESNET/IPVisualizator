@@ -6,6 +6,13 @@ class IPVizualizator {
         this.token = args.token;
 
         this.container = d3.select(args.id).classed('card', true).style('width', (this.canvas_size + 2) + 'px');
+        if(d3.select('.vizualizator-tooltip').empty() == true) {
+            this.tooltip = d3.select(document.body).append('div').classed('vizualizator-tooltip', true);
+        }
+        else {
+            this.tooltip = d3.select('.vizualizator-tooltip');
+        }
+        this.tooltip.style('position', 'absolute').style('display', 'inline-block').style('padding', '10px').style('font-family', "'Open Sans' sans-serif").style('color', '#000').style('background-color', '#fff').style('border', '1px solid #999').style('border-radius', '2px').style('pointer-events', 'none').style('opacity', '0').style('z-index', '99');
         this.header = this.container.append('div').classed('card-header', true).style('width', this.canvas_size + 'px').style('padding-left', '10px').style('padding-right', '10px');
         this.header_row = this.header.append('div').classed('row', true);
 
@@ -123,10 +130,6 @@ class IPVizualizator {
 
     }
 
-    info() {
-        console.log("API server: " + this.api + ", Network: " + this.network + "/" + this.mask + ", One pixel is mask " + this.resolution);
-    }
-
     set_network(network) {
         this.network = network;
     }
@@ -180,7 +183,7 @@ class IPVizualizator {
     }
 
     create_api_call_url() {
-        return this.api + "/vizualizator/" + this.token + "/map/" + this.network + "/" + this.mask +"?resolution=" + this.resolution + "&skip_zeros=" + this.skip_zeros + "&raw_data=true";
+        return this.api + "/vizualizator/" + this.token + "/map/" + this.network + "/" + this.mask +"?resolution=" + (this.mask + this.resolution) + "&skip_zeros=" + this.skip_zeros + "&raw_data=true";
     }
 
     hilbert_i_to_xy(index, order) {
@@ -363,6 +366,9 @@ class IPVizualizator {
                     size = size >= 1 ? size : 1;
                     var width = this.pixel_width * size;
                     var height = this.pixel_height * size;
+
+                    if(width > this.canvas_size) continue;
+
                     context.lineWidth = this.overlay_thickness;
                     context.strokeStyle = "color" in subnet ? subnet.color : this.overlay_color;
 
@@ -433,6 +439,7 @@ class IPVizualizator {
             size = size >= 1 ? size : 1;
             var width = this.pixel_width * size;
             var height = this.pixel_height * size;
+
             context.lineWidth = this.zoom_thickness;
             context.strokeStyle = this.zoom_color;
 
@@ -497,11 +504,12 @@ class IPVizualizator {
         this.network = ip;
         var new_mask = this.network_data.prefix_length + this.zoom_mask;
         this.mask = new_mask <= 32 ? new_mask : 32;
-        var new_resolution = this.network_data.prefix_length + this.zoom_mask + 8 ;
-        this.resolution =  new_resolution <= 32 ? new_resolution : 32;
         this.zoomed_subnet = null;
-        if(this.zoom_mask > (this.resolution - this.mask)) {
-            this.zoom_mask = this.resolution - this.mask;
+        if(this.resolution + this.mask > 32) {
+            this.resolution = 32 - this.mask;
+        }
+        if(this.zoom_mask > this.resolution) {
+            this.zoom_mask = this.resolution ;
         }
         this.update();
 
@@ -527,7 +535,7 @@ class IPVizualizator {
                     this.draw_overlay();
                 }
 
-                d3.select('#tooltip')
+                this.tooltip
 					.style('opacity', 0.8)
 					.style('top', d3.event.pageY + 5 + 'px')
 					.style('left', d3.event.pageX + 5 + 'px')
@@ -538,7 +546,7 @@ class IPVizualizator {
                     this.draw_overlay();
                 }
 
-				d3.select('#tooltip')
+				this.tooltip
 					.style('opacity', 0);
 
 			}
@@ -546,12 +554,14 @@ class IPVizualizator {
 		});
         this.overlay_canvas.on('click',  () => {
 			if (this.zoomed_subnet != null && this.static == false) {
+                this.modal_network.style('display', 'none');
+                this.modal_config.style('display', 'none');
                 this.zoom();
 			}
 
 		});
         this.overlay_canvas.on('mouseout',  d => {
-				d3.select('#tooltip')
+            this.tooltip
 					.style('opacity', 0);
             if(this.zoomed_subnet != null) {
                 this.zoomed_subnet = null;
@@ -560,7 +570,7 @@ class IPVizualizator {
             });
         this.button_back.on('mouseout',  d => {
             this.button_back_svg.attr('fill', 'black');
-            d3.select('#tooltip').style('opacity', 0);
+            this.tooltip.style('opacity', 0);
             this.button_back.style('cursor', 'default');
         });
         this.button_back.on('mousemove',  d => {
@@ -568,14 +578,14 @@ class IPVizualizator {
                 var last_network = this.network_history[this.network_history.length -1];
                 this.button_back_svg.attr('fill', '#0275d8');
                 this.button_back.style('cursor', 'pointer');
-                d3.select('#tooltip')
+                this.tooltip
                     .style('opacity', 0.8)
                     .style('top', d3.event.pageY + 5 + 'px')
                     .style('left', d3.event.pageX + 5 + 'px')
                     .html("Return back to network <b>" + last_network[0] + "/" + last_network[1] + "</b>");
             }
             else {
-                d3.select('#tooltip')
+                this.tooltip
                     .style('opacity', 0.8)
                     .style('top', d3.event.pageY + 5 + 'px')
                     .style('left', d3.event.pageX + 5 + 'px')
@@ -584,6 +594,8 @@ class IPVizualizator {
         });
         this.button_back.on('click',  d => {
             if(this.network_history != 0) {
+                this.modal_network.style('display', 'none');
+                this.modal_config.style('display', 'none');
                 var last_network = this.network_history[this.network_history.length -1];
                 this.network_history.pop();
                 this.button_back_svg.attr('fill', '#04407f');
@@ -596,11 +608,11 @@ class IPVizualizator {
         });
         this.network_heading.on('mouseout',  d => {
             this.network_heading.style('color', 'black');
-            d3.select('#tooltip').style('opacity', 0);
+            this.tooltip.style('opacity', 0);
         });
         this.network_heading.on('mousemove',  d => {
             this.network_heading.style('color', '#0275d8');
-            d3.select('#tooltip')
+            this.tooltip
                 .style('opacity', 0.8)
                 .style('top', d3.event.pageY + 5 + 'px')
                 .style('left', d3.event.pageX + 5 + 'px')
@@ -653,7 +665,6 @@ class IPVizualizator {
             this.network_history.push([this.network, this.mask, this.resolution]);
             this.network = network[0];
             this.mask = mask;
-            this.resolution = mask + 8 <= 32 ? mask + 8 : 32;
             this.zoomed_subnet = null;
 
             this.modal_network_error.html('');
@@ -664,11 +675,11 @@ class IPVizualizator {
         });
         this.button_config.on('mouseout',  d => {
             this.button_config_svg.attr('fill', 'black');
-            d3.select('#tooltip').style('opacity', 0);
+            this.tooltip.style('opacity', 0);
         });
         this.button_config.on('mousemove',  d => {
             this.button_config_svg.attr('fill', '#0275d8');
-            d3.select('#tooltip')
+            this.tooltip
                 .style('opacity', 0.8)
                 .style('top', d3.event.pageY + 5 + 'px')
                 .style('left', d3.event.pageX + 5 + 'px')
@@ -678,7 +689,14 @@ class IPVizualizator {
         this.button_config.on('click',  d => {
             if(this.modal_config.style('display') == 'none') {
 
-                this.modal_config_resolution_range.property('value', '');
+                this.modal_config_resolution_range.property('value', this.resolution);
+                this.modal_config_zoom_range.property('value', this.zoom_mask);
+                this.modal_config_resolution_value.html('+ /'+ this.resolution);
+                this.modal_config_zoom_value.html('+ /'+ this.zoom_mask);
+                this.modal_config_zoom_range.property('min', 2);
+                this.modal_config_zoom_range.property('max', this.resolution);
+                this.modal_config_resolution_range.property('min', 0);
+                this.modal_config_resolution_range.property('max', this.mask + 16 <= 32 ? 16 : 32 - this.mask );
 
 
                 this.modal_config.style('display', 'initial');
@@ -689,10 +707,21 @@ class IPVizualizator {
             }
         });
         this.modal_config_resolution_range.on('input',  d => {
-            this.modal_config_resolution_value.html('+'+ this.modal_config_resolution_range.node().value);
+            this.modal_config_resolution_value.html('+ /'+ this.modal_config_resolution_range.node().value);
         });
         this.modal_config_zoom_range.on('input',  d => {
-            this.modal_config_zoom_value.html('+'+ this.modal_config_zoom_range.node().value);
+            this.modal_config_zoom_value.html('+ /'+ this.modal_config_zoom_range.node().value);
+        });
+        this.modal_config_zoom_range.on('change',  d => {
+            this.zoom_mask = parseInt(this.modal_config_zoom_range.node().value);
+        });
+        this.modal_config_resolution_range.on('change',  d => {
+            this.resolution = parseInt(this.modal_config_resolution_range.node().value);
+            this.modal_config_zoom_range.property('min', this.resolution == 0 ? 0 : 2);
+            this.modal_config_zoom_range.property('max', this.resolution);
+            this.modal_config_zoom_value.html('+ /'+ this.modal_config_zoom_range.node().value);
+            this.zoom_mask = parseInt(this.modal_config_zoom_range.node().value);
+            this.update();
         });
         this.modal_config_button_cancel.on('click',  d => {
             this.modal_config.style('display', 'none');

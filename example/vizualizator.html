@@ -7,7 +7,6 @@
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-    <link rel="stylesheet" href="../IPVizualizator-js/IPVizualizator.css">
 
     <title>IP Vizualizator</title>
   </head>
@@ -59,7 +58,6 @@
         <div id="map"></div>
         <p> Dalsi tabulka je hned pod ni</p>
         <div id="map2"></div>
-        <div id="tooltip"></div>
     </div>
 
 
@@ -71,15 +69,15 @@
     <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
     <script src="../IPVizualizator-js/IPVizualizator.js"></script>
     <script>
-        //const vizualizator2 = new IPVizualizator({
-        //    "id": "#map2",
-        //    "size": "regular",
-        //    "api": "http://127.0.0.1:8080/api/v1",
-        //    "token": "5ILUnBwe5rh5X1jnH3GBsw",
-        //    "network": "147.0.0.0",
-        //    "mask": 8,
-        //    "resolution": 16
-        //});
+        const vizualizator2 = new IPVizualizator({
+            "id": "#map2",
+            "size": "regular",
+            "api": "http://127.0.0.1:8080/api/v1",
+            "token": "5ILUnBwe5rh5X1jnH3GBsw",
+            "network": "147.0.0.0",
+            "mask": 8,
+            "resolution": 16
+        });
         const vizualizator = new IPVizualizator({
             "id": "#map",
             "size": "regular",
