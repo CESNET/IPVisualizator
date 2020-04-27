@@ -1,11 +1,126 @@
+/*
+* ipvizualizator.js v0.9
+*
+* Copyright (c) 2020 Jakub Jancicka <jancijak@fit.cvut.cz>
+* Released under Apache license v2.0
+* */
+
 class IPVizualizator {
 
     constructor(args) {
-        this.Size = {"small": 512, "regular": 768, "large": 1024, "xlarge": 4096};
-        this.canvas_size = args.size in this.Size ? this.Size[args.size] : this.Size.regular;
-        this.token = args.token;
+        this.Size = {'small': 512, 'regular': 768, 'large': 1024, 'xlarge': 4096};
+        const RequiredParameters = ['api', 'token', 'network', 'mask', 'resolution', 'id'];
 
+        // Check if required parameters are not missing
+        for(const parameter of RequiredParameters) {
+            if(!(parameter in args)) {
+                console.error('IPVizualizator: required "' + parameter + '" key missing in constructor.');
+                return;
+            }
+        }
+
+        // Configuration parameters
+        this.api = args.api;
+        this.token = args.token;
+        this.network = args.network;
+        this.mask = args.mask;
+        this.resolution = args.resolution;
+        this.canvas_size = args.size in this.Size ? this.Size[args.size] : this.Size.regular;
         this.container = d3.select(args.id).classed('card', true).style('width', (this.canvas_size + 2) + 'px');
+
+        var config = 'config' in args && typeof args.config == 'object' ? args.config : {};
+        this.static = 'static' in config ? config.static : false;
+        this.skip_zeros = 'skip_zeros' in config ? config.skip_zeros : false;
+        this.bordered_pixels = 'bordered_pixels' in config ? config.bordered_pixels : true;
+        this.zoom_mask = 'zoom_mask' in config ? config.zoom_mask : 8;
+        this.map_opacity = 'map_opacity' in config ? config.map_opacity : 1.0;
+        this.overlay_opacity = 'overlay_opacity' in config ? config.overlay_opacity : 1.0;
+        this.overlay_thickness = 'map_thickness' in config ? config.map_thickness : 1;
+        this.overlay_color = 'overlay_color' in config ? config.overlay_color : '#ffff00';
+        this.overlay_text_position = 'overlay_text_position' in config ? config.overlay_text_position : 'inside';
+        this.show_overlay = 'show_overlay' in config ? config.show_overlay : true;
+        this.zoom_opacity = 'zoom_opacity' in config ? config.zoom_opacity : 1.0;
+        this.zoom_thickness = 'zoom_thickness' in config ? config.zoom_thickness : 1;
+        this.zoom_color = 'zoom_color' in config ? config.zoom_color : '#ff0000';
+
+        // Specified networks which will be highlighted
+        this.overlay_subnets = []
+        if('overlay_networks' in args) {
+            for (const net of args.overlay_networks) {
+                var network = this.convert_network_from_string(net.network);
+                if(network[0] == false) {
+                    console.error('IPVizualizator: Overlay network "' + net.network + '" has wrong format - ' + network[1] + '.');
+                }
+
+                var subnet = {'text': net.text, 'ip': network[1], 'mask': network[2]};
+                if ('text_position' in net) subnet.text_position = net.text_position;
+                if ('color' in net) subnet.color = net.color;
+
+                this.overlay_subnets.push(subnet);
+            }
+        }
+
+        // Class variables
+        this.bordered_map = false;
+        this.pixel_width = 0;
+        this.pixel_height = 0;
+        this.network_history = [];
+        this.zoomed_subnet = null;
+        this.network_data = {};
+        this.next_color = 1;
+        this.color_to_pixel = {};
+
+        // Inject html to page
+        this.create_ipvizualizator();
+
+        // Load data from server and render maps
+        this.update();
+
+        this.add_listeners();
+
+    }
+
+    // ------- Helpers --------
+
+    convert_ip_from_string(ip_string) {
+        var ip = ip_string.split('.').reduce(function (ipInt, octet) {
+            return (ipInt << 8) + parseInt(octet, 10)
+        }, 0) >>> 0;
+        return ip;
+    }
+
+    convert_network_from_string(network_string) {
+        var network = network_string.split('/');
+
+        if(network.length != 2) {
+            return [false, 'Required format {network IP}/{mask}'];
+        }
+
+        if(network[0].match('^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$') == null) {
+            return [false, 'Network is not IPv4 address'];
+        }
+
+        if(isNaN(network[1])) {
+            return [false, 'Network mask is not integer'];
+        }
+
+        var mask = parseInt(network[1]);
+
+        if(mask % 2 == 1 || mask < 0 || mask  > 32) {
+            return [false, 'Network mask is odd or invalid'];
+        }
+
+        var ip = this.convert_ip_from_string(network[0]);
+        var network_portion = ip >>> (32-mask) << (32-mask) >>>0;
+
+        if(ip != network_portion) {
+            return [false, 'IP is not valid network address'];
+        }
+
+        return [true, ip, mask];
+    }
+
+    create_ipvizualizator() {
         if(d3.select('.vizualizator-tooltip').empty() == true) {
             this.tooltip = d3.select(document.body).append('div').classed('vizualizator-tooltip', true);
         }
@@ -18,15 +133,15 @@ class IPVizualizator {
 
         this.button_back = this.header_row.append('div').classed('col', true).append('div').classed('button-back align-middle border-right',true).style('padding-right', '5px').style('width', '30px');
         this.button_back_svg = this.button_back.append('svg').attr('viewBox', '0 0 8 8').style('height', '100%').style('width', '100%').append('path').attr('d', 'M4.5 0c-1.93 0-3.5 1.57-3.5 3.5v.5h-1l2 2 2-2h-1v-.5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5c0-1.93-1.57-3.5-3.5-3.5z').attr('transform','translate(0 1)');
-        this.network_heading = this.header_row.append('div').classed('network-heading col align-middle',true).style('text-align', 'center').style('font-size', '20px').style('cursor', 'pointer');
+        this.network_heading = this.header_row.append('div').classed('network-heading col align-middle',true).style('text-align', 'center').style('font-size', '20px');
         this.menu = this.header_row.append('div').classed('col',true).append('div').classed('float-right', true);
         this.button_config = this.menu.append('div').classed('button-config align-middle border-left float-left',true).style('padding-left', '5px').style('padding-right', '5px').style('width', '30px').style('cursor', 'pointer');
         this.button_config_svg = this.button_config.append('svg').attr('viewBox', '0 0 8 8').style('height', '100%').style('width', '100%').append('path').attr('d', 'M3.5 0l-.5 1.19c-.1.03-.19.08-.28.13l-1.19-.5-.72.72.5 1.19c-.05.1-.09.18-.13.28l-1.19.5v1l1.19.5c.04.1.08.18.13.28l-.5 1.19.72.72 1.19-.5c.09.04.18.09.28.13l.5 1.19h1l.5-1.19c.09-.04.19-.08.28-.13l1.19.5.72-.72-.5-1.19c.04-.09.09-.19.13-.28l1.19-.5v-1l-1.19-.5c-.03-.09-.08-.19-.13-.28l.5-1.19-.72-.72-1.19.5c-.09-.04-.19-.09-.28-.13l-.5-1.19h-1zm.5 2.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z');
         this.button_screenshot = this.menu.append('div').classed('button-screenshot align-middle border-left float-left',true).style('padding-left', '5px').style('width', '25px').style('cursor', 'pointer');
         this.button_screenshot_svg = this.button_screenshot.append('svg').attr('viewBox', '0 0 8 8').style('height', '100%').style('width', '100%').append('path').attr('d', 'M4.09 0c-.05 0-.1.04-.13.09l-.94 1.81c-.02.05-.07.09-.13.09h-1.41c-.83 0-1.5.67-1.5 1.5v4.41c0 .05.04.09.09.09h7.81c.05 0 .09-.04.09-.09v-5.81c0-.06-.04-.09-.09-.09h-.81c-.05 0-.1-.04-.13-.09l-.94-1.81c-.03-.05-.07-.09-.13-.09h-1.81zm-2.59 3c.28 0 .5.22.5.5s-.22.5-.5.5-.5-.22-.5-.5.22-.5.5-.5zm3.5 0c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 1c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z');
         this.map = this.container.append('div').classed('canvases', true).attr('style', 'position: relative;')
-                .style('width', this.canvas_size+'px')
-                .style('height', this.canvas_size+'px');
+            .style('width', this.canvas_size+'px')
+            .style('height', this.canvas_size+'px');
 
 
         this.status_loading = this.map.append('div').classed('spinner-border text-primary',true).attr('role', 'status').style('width', '75px').style('height', '75px').style('position', 'absolute').style('left', (this.canvas_size - 75)/2 +'px').style('top', (this.canvas_size - 75)/2 +'px').style('z-index', '50');
@@ -88,12 +203,12 @@ class IPVizualizator {
         this.modal_config.style('display', 'none');
 
         this.canvas = this.map.append('canvas')
-                        .classed('mainCanvas', true)
-                        .attr('width', this.canvas_size)
-                        .attr('height', this.canvas_size)
-                        .attr('style', 'position: absolute; left: 0; top: 0; z-index: 0; background-color: transparent;')
-                        .style('width', this.canvas_size+'px')
-                        .style('height', this.canvas_size+'px');
+            .classed('mainCanvas', true)
+            .attr('width', this.canvas_size)
+            .attr('height', this.canvas_size)
+            .attr('style', 'position: absolute; left: 0; top: 0; z-index: 0; background-color: transparent;')
+            .style('width', this.canvas_size+'px')
+            .style('height', this.canvas_size+'px');
         this.canvas_context = this.canvas.node().getContext('2d');
         this.overlay_canvas = this.map.append('canvas')
             .classed('overlayCanvas', true)
@@ -104,58 +219,14 @@ class IPVizualizator {
             .style('height', this.canvas_size+'px');
         this.overlay_canvas_context = this.overlay_canvas.node().getContext('2d');
 
-        this.static = false;
         var customBase = document.createElement("custom");
         this.custom = d3.select(customBase);
-        this.api = args.api;
-        this.network = args.network;
-        this.mask = args.mask;
-        this.resolution = args.resolution;
-        this.skip_zeros = "skip_zeros" in args ? args.skip_zeros : false;
-        this.bordered_pixel = 'bordered_pixel' in args ? args.bordered_pixel : true;
 
-        this.network_data = {};
         this.color_map = d3.scaleSequential().interpolator(d3.interpolateViridis);
         this.hidden_canvas = this.map.append('canvas').classed('hiddenCanvas', true).attr('style', 'display: none;').attr('width',this.canvas_size).attr('height', this.canvas_size);
         this.hidden_canvas_context = this.hidden_canvas.node().getContext('2d');
-        this.nextCol = 1;
-        this.color_to_pixel = {};
-        this.zoomed_subnet = null;
-        this.zoom_mask = 2;
-        this.bordered_map = false;
-        this.pixel_width = 0;
-        this.pixel_height = 0;
-        this.map_opacity = 1.0;
-        this.overlay_opacity = 1.0;
-        this.overlay_thickness = 1;
 
 
-        this.overlay_subnets = []
-        if("overlay_networks" in args) {
-            for (const net of args.overlay_networks) {
-                var ip = net.network.split("/")[0];
-                var mask = parseInt(net.network.split("/")[1]);
-                ip = ip.split('.').reduce(function (ipInt, octet) {
-                    return (ipInt << 8) + parseInt(octet, 10)
-                }, 0) >>> 0;
-                var subnet = {"text": net.text, "ip": ip, "mask": mask};
-                if ("text_position" in net) subnet.text_position = net.text_position;
-                if ("color" in net) subnet.color = net.color;
-                this.overlay_subnets.push(subnet);
-            }
-        }
-
-        this.overlay_color = "#ffff00";
-        this.overlay_text_position = "in";
-        this.overlay_show = true;
-        this.zoom_opacity = 1.0;
-        this.zoom_thickness = 1;
-        this.zoom_color = "#ff0000";
-
-        this.network_history = [];
-
-        this.update();
-        this.add_listeners();
 
     }
 
@@ -236,11 +307,11 @@ class IPVizualizator {
 
     genColor() {
         var ret = [];
-        if(this.nextCol < 16777215){
-            ret.push(this.nextCol & 0xff);
-            ret.push((this.nextCol & 0xff00) >> 8);
-            ret.push((this.nextCol & 0xff0000) >> 16); 
-            this.nextCol += 1;
+        if(this.next_color < 16777215){
+            ret.push(this.next_color & 0xff);
+            ret.push((this.next_color & 0xff00) >> 8);
+            ret.push((this.next_color & 0xff0000) >> 16);
+            this.next_color += 1;
         }
         var col = "rgb(" + ret.join(',') + ")";
         return col;
@@ -332,7 +403,7 @@ class IPVizualizator {
         
         var all_pixels = this.custom.selectAll("custom.rect");
 
-        if (this.pixel_width > 20 && this.bordered_pixel) {
+        if (this.pixel_width > 20 && this.bordered_pixels) {
             this.bordered_map = true;
         }
         else {
@@ -400,7 +471,7 @@ class IPVizualizator {
         context.globalAlpha = this.overlay_opacity;
 
         // Overlay subnets
-        if(this.overlay_show == true) {
+        if(this.show_overlay == true) {
             for (const subnet of this.overlay_subnets) {
                 var bit_shift = 32 - this.network_data.prefix_length;
                 var bit_mask = 0xFFFFFFFF;
@@ -437,7 +508,7 @@ class IPVizualizator {
                         context.fillStyle = "color" in subnet ? subnet.color : this.overlay_color;
                         var font_size = Math.floor(width * 0.15);
 
-                        if(position == "in") {
+                        if(position == "inside") {
                             context.font = "bold " + font_size + "px Arial";
                             x = x + width / 2;
                             context.textAlign = "center";
@@ -678,15 +749,18 @@ class IPVizualizator {
             this.tooltip.style('opacity', 0);
         });
         this.network_heading.on('mousemove',  d => {
-            this.network_heading.style('color', '#0275d8');
-            this.tooltip
-                .style('opacity', 0.8)
-                .style('top', d3.event.pageY + 5 + 'px')
-                .style('left', d3.event.pageX + 5 + 'px')
-                .html("Change displayed network");
+            if(this.static == false) {
+                this.network_heading.style('color', '#0275d8').style('cursor', 'pointer');
+
+                this.tooltip
+                    .style('opacity', 0.8)
+                    .style('top', d3.event.pageY + 5 + 'px')
+                    .style('left', d3.event.pageX + 5 + 'px')
+                    .html("Change displayed network");
+            }
         });
         this.network_heading.on('click',  d => {
-            if(this.modal_network.style('display') == 'none') {
+            if(this.modal_network.style('display') == 'none' && this.static == false) {
                 this.modal_network_form_network.attr('placeholder', this.network + "/" + this.mask);
                 this.modal_network.style('display', 'initial');
                 this.modal_config.style('display', 'none');
@@ -701,37 +775,16 @@ class IPVizualizator {
         this.modal_network_button_set.on('click',  d => {
             this.modal_network_error.html('');
             var network_string = this.modal_network_form_network.node().value;
-            var network = network_string.split("/");
-            if(network.length != 2) {
-                this.modal_network_error.html('Wrong format: Required format {network IP}/{mask}');
-                return;
-            }
-            if(network[0].match('^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$') == null) {
-                this.modal_network_error.html('Network is not IPv4 address');
-                return;
-            }
-            if(isNaN(network[1])) {
-                this.modal_network_error.html('Network mask is not integer');
-                return;
-            }
-            var mask = parseInt(network[1]);
-            if(mask % 2 == 1 || mask < 0 || mask  > 32) {
-                this.modal_network_error.html('Network mask is odd or invalid');
-                return;
-            }
-            var ip = network[0].split('.').reduce(function (ipInt, octet) {
-                return (ipInt << 8) + parseInt(octet, 10)
-            }, 0) >>> 0;
-            var network_portion = ip >>> (32-mask) << (32-mask) >>>0;
+            var network = this.convert_network_from_string(network_string);
 
-            if(ip != network_portion) {
-                this.modal_network_error.html('IP is not valid network address');
+            if(network[0] == false) {
+                this.modal_network_error.html(network[1]);
                 return;
             }
 
             this.network_history.push([this.network, this.mask, this.resolution]);
-            this.network = network[0];
-            this.mask = mask;
+            this.network = network_string.split('/')[0];
+            this.mask = network[2];
             this.zoomed_subnet = null;
 
             this.modal_network_error.html('');
@@ -770,9 +823,9 @@ class IPVizualizator {
                 this.modal_config_overlay_opacity_value.html(this.overlay_opacity);
                 this.modal_config_overlay_thickness_range.property('value', this.overlay_thickness);
                 this.modal_config_overlay_thickness_value.html(this.overlay_thickness);
-                this.modal_config_overlay_show_checkbox.property('checked', this.overlay_show);
+                this.modal_config_overlay_show_checkbox.property('checked', this.show_overlay);
 
-                if(this.overlay_show == true) {
+                if(this.show_overlay == true) {
                     this.modal_config_overlay_opacity_range.attr('disabled', null);
                     this.modal_config_overlay_thickness_range.attr('disabled', null);
                 }
@@ -831,8 +884,8 @@ class IPVizualizator {
             this.draw_overlay();
         });
         this.modal_config_overlay_show_checkbox.on('change',  d => {
-            this.overlay_show = this.modal_config_overlay_show_checkbox.node().checked;
-            if(this.overlay_show == true) {
+            this.show_overlay = this.modal_config_overlay_show_checkbox.node().checked;
+            if(this.show_overlay == true) {
                 this.modal_config_overlay_opacity_range.attr('disabled', null);
                 this.modal_config_overlay_thickness_range.attr('disabled', null);
             }
