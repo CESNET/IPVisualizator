@@ -576,371 +576,392 @@ class IPVizualizator {
 
     create_ipvizualizator() {
         // Create tooltip - only one for all existing IPVizualizators on page
-        if(d3.select('.ipvizualizator-tooltip').empty() == true) {
-            this.tooltip = d3.select(document.body)
-                             .append('div')
-                             .classed('ipvizualizator-tooltip', true)
-                             .style('position', 'absolute')
-                             .style('display', 'inline-block')
-                             .style('padding', '10px')
-                             .style('font-family', "'Open Sans' sans-serif")
-                             .style('color', '#000')
-                             .style('background-color', '#fff')
-                             .style('border', '1px solid #999')
-                             .style('border-radius', '2px')
-                             .style('pointer-events', 'none')
-                             .style('opacity', '0')
-                             .style('z-index', '99');
-        }
-        else {
-            this.tooltip = d3.select('.ipvizualizator-tooltip');
+        if (d3.select(".ipvizualizator-tooltip").empty() == true) {
+            this.tooltip = d3
+                .select(document.body)
+                .append("div")
+                .classed("ipvizualizator-tooltip", true)
+                .style("position", "absolute")
+                .style("display", "inline-block")
+                .style("padding", "10px")
+                .style("font-family", "'Open Sans' sans-serif")
+                .style("color", "#000")
+                .style("background-color", "#fff")
+                .style("border", "1px solid #999")
+                .style("border-radius", "2px")
+                .style("pointer-events", "none")
+                .style("opacity", "0")
+                .style("z-index", "99");
+        } else {
+            this.tooltip = d3.select(".ipvizualizator-tooltip");
         }
 
         // Create container for whole IPVizualizator
-        this.container = d3.select(this.id)
-                          .classed('card', true)
-                          .style('width', (this.canvas_size + 2) + 'px');
+        this.container = d3
+            .select(this.id)
+            .classed("card", true)
+            .style("width", this.canvas_size + 2 + "px");
 
         var header = this.container
-                         .append('div')
-                         .classed('card-header', true)
-                         .style('width', '100%')
-                         .style('padding-left', '10px')
-                         .style('padding-right', '10px');
-        var header_row = header.append('div').classed('row', true);
+            .append("div")
+            .classed("card-header", true)
+            .style("width", "100%")
+            .style("padding-left", "10px")
+            .style("padding-right", "10px");
+        var header_row = header.append("div").classed("row", true);
 
         // Back button for return in history
         this.button_back = header_row
-                               .append('div')
-                               .classed('col', true)
-                               .append('div')
-                               .classed('button-back align-middle border-right',true)
-                               .style('padding-right', '5px')
-                               .style('width', '30px');
+            .append("div")
+            .classed("col", true)
+            .append("div")
+            .classed("button-back align-middle border-right", true)
+            .style("padding-right", "5px")
+            .style("width", "30px");
         this.button_back_svg = this.button_back
-                                   .append('svg')
-                                   .attr('viewBox', '0 0 8 8')
-                                   .append('path')
-                                   .attr('d', 'M4.5 0c-1.93 0-3.5 1.57-3.5 3.5v.5h-1l2 2 2-2h-1v-.5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5c0-1.93-1.57-3.5-3.5-3.5z')
-                                   .attr('transform','translate(0 1)');
-
+            .append("svg")
+            .attr("viewBox", "0 0 8 8")
+            .append("path")
+            .attr(
+                "d",
+                "M4.5 0c-1.93 0-3.5 1.57-3.5 3.5v.5h-1l2 2 2-2h-1v-.5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5c0-1.93-1.57-3.5-3.5-3.5z"
+            )
+            .attr("transform", "translate(0 1)");
 
         // Network header for showing network address of displayed map
         this.network_heading = header_row
-                                   .append('div')
-                                   .classed('network-heading col align-middle text-center',true)
-                                   .style('font-size', '20px');
+            .append("div")
+            .classed("network-heading col align-middle text-center", true)
+            .style("font-size", "20px");
 
         // Right menu with config and screenshot button
         var menu = header_row
-                    .append('div')
-                    .classed('col',true)
-                    .append('div')
-                    .classed('float-right', true);
-        this.button_config = menu.append('div')
-                                 .classed('button-config align-middle border-left float-left',true)
-                                 .style('padding-left', '5px').style('padding-right', '5px')
-                                 .style('width', '30px')
-                                 .style('cursor', 'pointer');
+            .append("div")
+            .classed("col", true)
+            .append("div")
+            .classed("float-right", true);
+        this.button_config = menu
+            .append("div")
+            .classed("button-config align-middle border-left float-left", true)
+            .style("padding-left", "5px")
+            .style("padding-right", "5px")
+            .style("width", "30px")
+            .style("cursor", "pointer");
         this.button_config_svg = this.button_config
-                                     .append('svg')
-                                     .attr('viewBox', '0 0 8 8')
-                                     .append('path')
-                                     .attr('d', 'M3.5 0l-.5 1.19c-.1.03-.19.08-.28.13l-1.19-.5-.72.72.5 1.19c-.05.1-.09.18-.13.28l-1.19.5v1l1.19.5c.04.1.08.18.13.28l-.5 1.19.72.72 1.19-.5c.09.04.18.09.28.13l.5 1.19h1l.5-1.19c.09-.04.19-.08.28-.13l1.19.5.72-.72-.5-1.19c.04-.09.09-.19.13-.28l1.19-.5v-1l-1.19-.5c-.03-.09-.08-.19-.13-.28l.5-1.19-.72-.72-1.19.5c-.09-.04-.19-.09-.28-.13l-.5-1.19h-1zm.5 2.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z');
+            .append("svg")
+            .attr("viewBox", "0 0 8 8")
+            .append("path")
+            .attr(
+                "d",
+                "M3.5 0l-.5 1.19c-.1.03-.19.08-.28.13l-1.19-.5-.72.72.5 1.19c-.05.1-.09.18-.13.28l-1.19.5v1l1.19.5c.04.1.08.18.13.28l-.5 1.19.72.72 1.19-.5c.09.04.18.09.28.13l.5 1.19h1l.5-1.19c.09-.04.19-.08.28-.13l1.19.5.72-.72-.5-1.19c.04-.09.09-.19.13-.28l1.19-.5v-1l-1.19-.5c-.03-.09-.08-.19-.13-.28l.5-1.19-.72-.72-1.19.5c-.09-.04-.19-.09-.28-.13l-.5-1.19h-1zm.5 2.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z"
+            );
         this.button_screenshot = menu
-                                    .append('div')
-                                    .classed('button-screenshot align-middle border-left float-left',true)
-                                    .style('padding-left', '5px')
-                                    .style('width', '25px')
-                                    .style('cursor', 'pointer');
+            .append("div")
+            .classed("button-screenshot align-middle border-left float-left", true)
+            .style("padding-left", "5px")
+            .style("width", "25px")
+            .style("cursor", "pointer");
         this.button_screenshot_svg = this.button_screenshot
-                                         .append('svg')
-                                         .attr('viewBox', '0 0 8 8')
-                                         .append('path')
-                                         .attr('d', 'M4.09 0c-.05 0-.1.04-.13.09l-.94 1.81c-.02.05-.07.09-.13.09h-1.41c-.83 0-1.5.67-1.5 1.5v4.41c0 .05.04.09.09.09h7.81c.05 0 .09-.04.09-.09v-5.81c0-.06-.04-.09-.09-.09h-.81c-.05 0-.1-.04-.13-.09l-.94-1.81c-.03-.05-.07-.09-.13-.09h-1.81zm-2.59 3c.28 0 .5.22.5.5s-.22.5-.5.5-.5-.22-.5-.5.22-.5.5-.5zm3.5 0c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 1c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z');
+            .append("svg")
+            .attr("viewBox", "0 0 8 8")
+            .append("path")
+            .attr(
+                "d",
+                "M4.09 0c-.05 0-.1.04-.13.09l-.94 1.81c-.02.05-.07.09-.13.09h-1.41c-.83 0-1.5.67-1.5 1.5v4.41c0 .05.04.09.09.09h7.81c.05 0 .09-.04.09-.09v-5.81c0-.06-.04-.09-.09-.09h-.81c-.05 0-.1-.04-.13-.09l-.94-1.81c-.03-.05-.07-.09-.13-.09h-1.81zm-2.59 3c.28 0 .5.22.5.5s-.22.5-.5.5-.5-.22-.5-.5.22-.5.5-.5zm3.5 0c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 1c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z"
+            );
 
         // Container for canvases and modal windows
         this.map = this.container
-                    .append('div')
-                    .classed('canvases', true)
-                    .attr('style', 'position: relative;')
-                    .style('width', this.canvas_size+'px')
-                    .style('height', this.canvas_size+'px');
-
+            .append("div")
+            .classed("canvases", true)
+            .attr("style", "position: relative;")
+            .style("width", this.canvas_size + "px")
+            .style("height", this.canvas_size + "px");
 
         // Loading status - appears when IPVizualizator is updating
         this.status_loading = this.map
-                                .append('div')
-                                .classed('spinner-border text-primary',true)
-                                .attr('role', 'status')
-                                .style('width', '75px')
-                                .style('height', '75px')
-                                .style('position', 'absolute')
-                                .style('left', (this.canvas_size - 75)/2 +'px')
-                                .style('top', (this.canvas_size - 75)/2 +'px')
-                                .style('z-index', '50');
-        this.status_loading.style('display', 'none');
+            .append("div")
+            .classed("spinner-border text-primary", true)
+            .attr("role", "status")
+            .style("width", "75px")
+            .style("height", "75px")
+            .style("position", "absolute")
+            .style("left", (this.canvas_size - 75) / 2 + "px")
+            .style("top", (this.canvas_size - 75) / 2 + "px")
+            .style("z-index", "50");
+        this.status_loading.style("display", "none");
 
         // Error status - show error sent from server
         this.status_error = this.map
-                            .append('div')
-                            .classed('h2 text-danger text-center',true)
-                            .style('width', this.canvas_size + 'px')
-                            .style('height', '75px')
-                            .style('position', 'absolute')
-                            .style('top', (this.canvas_size - 75)/2 +'px')
-                            .style('z-index', '51')
-                            .style('text-shadow', '2px 2px 2px #000000')
-        this.status_error.style('display', 'none');
+            .append("div")
+            .classed("h2 text-danger text-center", true)
+            .style("width", this.canvas_size + "px")
+            .style("height", "75px")
+            .style("position", "absolute")
+            .style("top", (this.canvas_size - 75) / 2 + "px")
+            .style("z-index", "51")
+            .style("text-shadow", "2px 2px 2px #000000");
+        this.status_error.style("display", "none");
 
         // Modal window for change displayed network
         this.modal_network = this.map
-                                .append('div')
-                                .classed('card', true)
-                                .style('width', '470px')
-                                .style('height', '100px')
-                                .style('position', 'absolute')
-                                .style('left', (this.canvas_size - 470)/2 +'px')
-                                .style('top', '0px')
-                                .style('z-index', '2');
+            .append("div")
+            .classed("card", true)
+            .style("width", "470px")
+            .style("height", "100px")
+            .style("position", "absolute")
+            .style("left", (this.canvas_size - 470) / 2 + "px")
+            .style("top", "0px")
+            .style("z-index", "2");
         var modal_network_body = this.modal_network
-                                     .append('div')
-                                     .classed('card-body', true);
+            .append("div")
+            .classed("card-body", true);
         var modal_network_form = modal_network_body
-                                    .append('div')
-                                    .classed('form', true)
-                                    .append('div')
-                                    .classed('form-group', true);
-        modal_network_form.append('label').attr('for', 'network_input').html("Network");
+            .append("div")
+            .classed("form", true)
+            .append("div")
+            .classed("form-group", true);
+        modal_network_form
+            .append("label")
+            .attr("for", "network_input")
+            .html("Network");
         this.modal_network_form_network = modal_network_form
-                                            .append('input')
-                                            .attr('id', 'network_input')
-                                            .style('margin-left', '10px')
-                                            .style('padding-left', '5px');
+            .append("input")
+            .attr("id", "network_input")
+            .style("margin-left", "10px")
+            .style("padding-left", "5px");
         this.modal_network_button_set = modal_network_form
-                                            .append('button')
-                                            .classed('set btn btn-primary', true)
-                                            .style('margin-left', '10px')
-                                            .html('Set');
+            .append("button")
+            .classed("set btn btn-primary", true)
+            .style("margin-left", "10px")
+            .html("Set");
         this.modal_network_button_cancel = modal_network_form
-                                            .append('button')
-                                            .classed('cancel btn btn-secondary', true)
-                                            .style('margin-left', '10px')
-                                            .html('Close');
+            .append("button")
+            .classed("cancel btn btn-secondary", true)
+            .style("margin-left", "10px")
+            .html("Close");
         this.modal_network_error = modal_network_body
-                                            .append('p')
-                                            .classed('text-danger text-center font-weight-bold', true)
-                                            .style('margin-top', '-10px');
-        this.modal_network.style('opacity', '0.95');
-        this.modal_network.style('display', 'none');
+            .append("p")
+            .classed("text-danger text-center font-weight-bold", true)
+            .style("margin-top", "-10px");
+        this.modal_network.style("opacity", "0.95");
+        this.modal_network.style("display", "none");
 
         // Modal window for map configuration
         this.modal_config = this.map
-                            .append('div')
-                            .classed('card', true)
-                            .style('width', '320px')
-                            .style('height', '350px')
-                            .style('position', 'absolute')
-                            .style('left', (this.canvas_size - 320) +'px')
-                            .style('top', '0px')
-                            .style('z-index', '3');
+            .append("div")
+            .classed("card", true)
+            .style("width", "320px")
+            .style("height", "350px")
+            .style("position", "absolute")
+            .style("left", this.canvas_size - 320 + "px")
+            .style("top", "0px")
+            .style("z-index", "3");
         var modal_config_body = this.modal_config
-                                    .append('div')
-                                    .classed('card-body', true);
+            .append("div")
+            .classed("card-body", true);
 
         // Range input for resolution parameter
-        var modal_config_resolution = modal_config_body.append('div').classed('row', true);
+        var modal_config_resolution = modal_config_body
+            .append("div")
+            .classed("row", true);
         this.modal_config_resolution_label = modal_config_resolution
-                                                .append('div')
-                                                .classed('col-6', true)
-                                                .append('label')
-                                                .attr('for', 'resolution_range')
-                                                .html("Resolution");
+            .append("div")
+            .classed("col-6", true)
+            .append("label")
+            .attr("for", "resolution_range")
+            .html("Resolution");
         this.modal_config_resolution_range = modal_config_resolution
-                                                .append('div')
-                                                .classed('col-3', true)
-                                                .append('div')
-                                                .append('input')
-                                                .attr('type', 'range')
-                                                .classed('custom-range', true)
-                                                .attr('id', 'resolution_range')
-                                                .attr('step', 2);
+            .append("div")
+            .classed("col-3", true)
+            .append("div")
+            .append("input")
+            .attr("type", "range")
+            .classed("custom-range", true)
+            .attr("id", "resolution_range")
+            .attr("step", 2);
         this.modal_config_resolution_value = modal_config_resolution
-                                                .append('div')
-                                                .classed('col-3', true)
-                                                .append('span')
-                                                .classed('font-weight-bold text-primary', true);
+            .append("div")
+            .classed("col-3", true)
+            .append("span")
+            .classed("font-weight-bold text-primary", true);
 
         // Range input for zoom parameter
         var modal_config_zoom = modal_config_body
-                                    .append('div')
-                                    .classed('row', true);
+            .append("div")
+            .classed("row", true);
         this.modal_config_zoom_label = modal_config_zoom
-                                        .append('div')
-                                        .classed('col-6', true)
-                                        .append('label')
-                                        .attr('for', 'zoom_range')
-                                        .html("Zoom");
+            .append("div")
+            .classed("col-6", true)
+            .append("label")
+            .attr("for", "zoom_range")
+            .html("Zoom");
         this.modal_config_zoom_range = modal_config_zoom
-                                        .append('div')
-                                        .classed('col-3', true)
-                                        .append('div')
-                                        .append('input')
-                                        .attr('type', 'range')
-                                        .classed('custom-range', true)
-                                        .attr('id', 'zoom_range')
-                                        .attr('step', 2);
+            .append("div")
+            .classed("col-3", true)
+            .append("div")
+            .append("input")
+            .attr("type", "range")
+            .classed("custom-range", true)
+            .attr("id", "zoom_range")
+            .attr("step", 2);
         this.modal_config_zoom_value = modal_config_zoom
-                                        .append('div')
-                                        .classed('col-3', true)
-                                        .append('span')
-                                        .classed('font-weight-bold text-primary', true);
+            .append("div")
+            .classed("col-3", true)
+            .append("span")
+            .classed("font-weight-bold text-primary", true);
 
         // Range input for map opacity parameter
         var modal_config_map_opacity = modal_config_body
-                                    .append('div')
-                                    .classed('row mt-4', true);
+            .append("div")
+            .classed("row mt-4", true);
         this.modal_config_map_opacity_label = modal_config_map_opacity
-                                                .append('div')
-                                                .classed('col-6', true)
-                                                .append('label')
-                                                .attr('for', 'map_opacity')
-                                                .html("Map opacity");
+            .append("div")
+            .classed("col-6", true)
+            .append("label")
+            .attr("for", "map_opacity")
+            .html("Map opacity");
         this.modal_config_map_opacity_range = modal_config_map_opacity
-                                                .append('div')
-                                                .classed('col-3', true)
-                                                .append('div')
-                                                .append('input')
-                                                .attr('type', 'range')
-                                                .classed('custom-range', true)
-                                                .attr('id', 'map_opacity')
-                                                .attr('step', 0.05)
-                                                .attr('min', 0)
-                                                .attr('max', 1);
+            .append("div")
+            .classed("col-3", true)
+            .append("div")
+            .append("input")
+            .attr("type", "range")
+            .classed("custom-range", true)
+            .attr("id", "map_opacity")
+            .attr("step", 0.05)
+            .attr("min", 0)
+            .attr("max", 1);
         this.modal_config_map_opacity_value = modal_config_map_opacity
-                                                .append('div')
-                                                .classed('col-3', true)
-                                                .append('span')
-                                                .classed('font-weight-bold text-primary', true);
+            .append("div")
+            .classed("col-3", true)
+            .append("span")
+            .classed("font-weight-bold text-primary", true);
 
         // Checkbox input for overlay show parameter
         var modal_config_overlay_show = modal_config_body
-                                        .append('div')
-                                        .classed('row mb-2', true);
+            .append("div")
+            .classed("row mb-2", true);
         this.modal_config_overlay_show_label = modal_config_overlay_show
-                                                .append('div')
-                                                .classed('col-6 text-nowrap', true)
-                                                .html('Show overlay');
+            .append("div")
+            .classed("col-6 text-nowrap", true)
+            .html("Show overlay");
         var modal_config_overlay_show_switch = modal_config_overlay_show
-                                                .append('div')
-                                                .classed('col-3 custom-control custom-switch', true);
+            .append("div")
+            .classed("col-3 custom-control custom-switch", true);
         this.modal_config_overlay_show_checkbox = modal_config_overlay_show_switch
-                                                    .append('input')
-                                                    .attr('type', 'checkbox')
-                                                    .classed('custom-control-input position-static', true)
-                                                    .attr('id', 'overlay_show');
+            .append("input")
+            .attr("type", "checkbox")
+            .classed("custom-control-input position-static", true)
+            .attr("id", "overlay_show");
         var modal_config_overlay_show_empty_label = modal_config_overlay_show_switch
-                                                        .append('label')
-                                                        .classed('custom-control-label', true)
-                                                        .attr('for', 'overlay_show')
-                                                        .html('');
+            .append("label")
+            .classed("custom-control-label", true)
+            .attr("for", "overlay_show")
+            .html("");
 
         // Range input for overlay opacity parameter
         var modal_config_overlay_opacity = modal_config_body
-                                            .append('div')
-                                            .classed('row', true);
+            .append("div")
+            .classed("row", true);
         this.modal_config_overlay_opacity_label = modal_config_overlay_opacity
-                                                    .append('div')
-                                                    .classed('col-6 text-nowrap', true)
-                                                    .append('label')
-                                                    .attr('for', 'overlay_opacity')
-                                                    .html("Overlay opacity");
+            .append("div")
+            .classed("col-6 text-nowrap", true)
+            .append("label")
+            .attr("for", "overlay_opacity")
+            .html("Overlay opacity");
         this.modal_config_overlay_opacity_range = modal_config_overlay_opacity
-                                                    .append('div')
-                                                    .classed('col-3', true)
-                                                    .append('div')
-                                                    .append('input')
-                                                    .attr('type', 'range')
-                                                    .classed('custom-range', true)
-                                                    .attr('id', 'overlay_opacity')
-                                                    .attr('step', 0.05)
-                                                    .attr('min', 0).attr('max', 1);
+            .append("div")
+            .classed("col-3", true)
+            .append("div")
+            .append("input")
+            .attr("type", "range")
+            .classed("custom-range", true)
+            .attr("id", "overlay_opacity")
+            .attr("step", 0.05)
+            .attr("min", 0)
+            .attr("max", 1);
         this.modal_config_overlay_opacity_value = modal_config_overlay_opacity
-                                                    .append('div')
-                                                    .classed('col-3', true)
-                                                    .append('span')
-                                                    .classed('font-weight-bold text-primary', true);
+            .append("div")
+            .classed("col-3", true)
+            .append("span")
+            .classed("font-weight-bold text-primary", true);
 
         // Range input for overlay thickness parameter
-        var modal_config_overlay_thickness = modal_config_body.append('div').classed('row', true);
+        var modal_config_overlay_thickness = modal_config_body
+            .append("div")
+            .classed("row", true);
         this.modal_config_overlay_thickness_label = modal_config_overlay_thickness
-                                                        .append('div')
-                                                        .classed('col-6 text-nowrap', true)
-                                                        .append('label')
-                                                        .attr('for', 'overlay_thickness')
-                                                        .html("Overlay thickness");
+            .append("div")
+            .classed("col-6 text-nowrap", true)
+            .append("label")
+            .attr("for", "overlay_thickness")
+            .html("Overlay thickness");
         this.modal_config_overlay_thickness_range = modal_config_overlay_thickness
-                                                        .append('div')
-                                                        .classed('col-3', true)
-                                                        .append('div')
-                                                        .append('input')
-                                                        .attr('type', 'range')
-                                                        .classed('custom-range', true)
-                                                        .attr('id', 'overlay_thickness')
-                                                        .attr('step', 1)
-                                                        .attr('min', 1)
-                                                        .attr('max', 10);
+            .append("div")
+            .classed("col-3", true)
+            .append("div")
+            .append("input")
+            .attr("type", "range")
+            .classed("custom-range", true)
+            .attr("id", "overlay_thickness")
+            .attr("step", 1)
+            .attr("min", 1)
+            .attr("max", 10);
         this.modal_config_overlay_thickness_value = modal_config_overlay_thickness
-                                                        .append('div')
-                                                        .classed('col-3', true)
-                                                        .append('span')
-                                                        .classed('font-weight-bold text-primary', true);
+            .append("div")
+            .classed("col-3", true)
+            .append("span")
+            .classed("font-weight-bold text-primary", true);
 
         this.modal_config_button_cancel = modal_config_body
-                                                .append('button')
-                                                .classed('cancel btn btn-secondary', true)
-                                                .style('margin-left', '105px')
-                                                .style('margin-top', '20px')
-                                                .html('Close');
+            .append("button")
+            .classed("cancel btn btn-secondary", true)
+            .style("margin-left", "105px")
+            .style("margin-top", "20px")
+            .html("Close");
 
-        this.modal_config.style('opacity', '0.95');
-        this.modal_config.style('display', 'none');
+        this.modal_config.style("opacity", "0.95");
+        this.modal_config.style("display", "none");
 
         // Main canvas with map
-        this.canvas = this.map.append('canvas')
-                        .classed('mainCanvas', true)
-                        .attr('width', this.canvas_size)
-                        .attr('height', this.canvas_size)
-                        .style('position', 'absolute')
-                        .style('left', 0)
-                        .style('top', 0)
-                        .style('z-index', 0)
-                        .style('background-color', 'transparent')
-                        .style('width', this.canvas_size+'px')
-                        .style('height', this.canvas_size+'px');
-        this.canvas_context = this.canvas.node().getContext('2d');
+        this.canvas = this.map
+            .append("canvas")
+            .classed("mainCanvas", true)
+            .attr("width", this.canvas_size)
+            .attr("height", this.canvas_size)
+            .style("position", "absolute")
+            .style("left", 0)
+            .style("top", 0)
+            .style("z-index", 0)
+            .style("background-color", "transparent")
+            .style("width", this.canvas_size + "px")
+            .style("height", this.canvas_size + "px");
+        this.canvas_context = this.canvas.node().getContext("2d");
 
         // Canvas with overlay networks and zoom border
-        this.overlay_canvas = this.map.append('canvas')
-                                 .classed('overlayCanvas', true)
-                                 .attr('width', this.canvas_size)
-                                 .attr('height', this.canvas_size)
-                                 .style('position', 'absolute')
-                                 .style('left', 0)
-                                 .style('top', 0)
-                                 .style('z-index', 0)
-                                 .style('background-color', 'transparent')
-                                 .style('width', this.canvas_size+'px')
-                                 .style('height', this.canvas_size+'px');
-        this.overlay_canvas_context = this.overlay_canvas.node().getContext('2d');
+        this.overlay_canvas = this.map
+            .append("canvas")
+            .classed("overlayCanvas", true)
+            .attr("width", this.canvas_size)
+            .attr("height", this.canvas_size)
+            .style("position", "absolute")
+            .style("left", 0)
+            .style("top", 0)
+            .style("z-index", 0)
+            .style("background-color", "transparent")
+            .style("width", this.canvas_size + "px")
+            .style("height", this.canvas_size + "px");
+        this.overlay_canvas_context = this.overlay_canvas.node().getContext("2d");
 
         // Hidden canvas with unique color for each pixel
-        this.hidden_canvas = this.map.append('canvas')
-                                .classed('hiddenCanvas', true)
-                                .style('display', 'none')
-                                .attr('width',this.canvas_size)
-                                .attr('height', this.canvas_size);
-        this.hidden_canvas_context = this.hidden_canvas.node().getContext('2d');
+        this.hidden_canvas = this.map
+            .append("canvas")
+            .classed("hiddenCanvas", true)
+            .style("display", "none")
+            .attr("width", this.canvas_size)
+            .attr("height", this.canvas_size);
+        this.hidden_canvas_context = this.hidden_canvas.node().getContext("2d");
 
         // Color range for values of network pixels
         this.color_map = d3.scaleSequential().interpolator(d3.interpolateViridis);
