@@ -66,10 +66,10 @@ class IPVizualizator {
         this.network_history = [];
         this.zoomed_subnet = null;
         this.next_color = 1;
-        this.color_to_pixel = {};
+
+        // Pixels and network_data hold data sent from server
+        this.pixels = {};
         this.network_data = {};
-        var customBase = document.createElement("custom");
-        this.custom = d3.select(customBase);
 
         // Inject html elements
         this.create_ipvizualizator();
@@ -270,62 +270,23 @@ class IPVizualizator {
         // Compute pixel size
         this.pixel_size = Math.floor(this.canvas_size / (2**this.network_data.hilbert_order));
 
-        //Bind data to element in DOM
-        var pixels = this.custom.selectAll("custom.rect").data(this.network_data.pixels);
+        // Clear old pixels
+        this.pixels = {};
+        this.next_color = 1;
 
-        // Remove elements which are not in actual displayed data
-        pixels
-            .exit()
-            .remove();
+        // Compute x, y coordinates and colors of each pixel
+        for(const pixel_data of this.network_data.pixels) {
+            var pixel = {'val': parseFloat(pixel_data.val), 'ip': parseInt(pixel_data.ip)};
+            pixel.fillStyle = pixel.val == 0 ? "#000000" : this.color_map(pixel.val);
+            pixel.x = this.hilbert_i_to_xy(pixel.ip, this.network_data.hilbert_order)[0] * this.pixel_size;
+            pixel.y = this.hilbert_i_to_xy(pixel.ip, this.network_data.hilbert_order)[1] * this.pixel_size;
 
-        // Create elements for new pixels in displayed data
-        var new_pixels = pixels
-                            .enter()
-                            .append("custom")
-                            .attr("class", "rect");
-            
-        new_pixels
-            .attr("fillStyle", d => {
-                var val = parseFloat(d.val)
-                return val == 0 ? "#000000" : this.color_map(val);
-            })
-            .attr("fillStyleHidden", d => { 
-                if(!d.hiddenCol) {
-                    d.hiddenCol = this.generate_next_color();
-                    this.color_to_pixel[d.hiddenCol] = d;
-                }
-                return d.hiddenCol;
-            })
-            .attr("x", d => {
-                return this.hilbert_i_to_xy(d.ip, this.network_data.hilbert_order)[0] * this.pixel_size;
-            })
-            .attr("y", d => {
-                return this.hilbert_i_to_xy(d.ip, this.network_data.hilbert_order)[1] * this.pixel_size;
-            });
-
-        // Update elements for existing pixels in data
-        pixels
-            .attr("x", d => {
-                return this.hilbert_i_to_xy(d.ip, this.network_data.hilbert_order)[0] * this.pixel_size;
-            })
-            .attr("y", d => {
-                return this.hilbert_i_to_xy(d.ip, this.network_data.hilbert_order)[1] * this.pixel_size;
-            })
-            .attr("fillStyle", d => { 
-                var val = parseFloat(d.val)
-                return val == 0 ? "#000000" : this.color_map(val);
-            })
-            .attr("fillStyleHidden", d => { 
-                if(!d.hiddenCol) {
-                    d.hiddenCol = this.generate_next_color();
-                    this.color_to_pixel[d.hiddenCol] = d;
-                }
-                return d.hiddenCol;
-            })
+            var next_color = this.generate_next_color();
+            pixel.fillStyleHidden = next_color;
+            this.pixels[next_color] = pixel;
+        }
 
         // Border each pixel if pixels are big enough and parameter bordered_pixels is set
-        var all_pixels = this.custom.selectAll("custom.rect");
-
         if (this.pixel_size > 20 && this.bordered_pixels) {
             this.bordered_map = true;
         }
@@ -333,7 +294,7 @@ class IPVizualizator {
             this.bordered_map = false;
         }
 
-        // Pixels is binded in custom_object -> pixels in response from server is not longer needed
+        // Data is binded in pixels variable  -> pixels in response from server is not longer needed
         delete this.network_data['pixels'];
     }
 
@@ -351,36 +312,36 @@ class IPVizualizator {
         if(hidden == false && this.skip_zeros == true) {
             context.fillStyle = "#000000";
             context.fillRect(0, 0, this.canvas_size, this.canvas_size);
-            
-            var pixel = this.custom.select("custom.rect");
-            
-            if(pixel.empty() == false && this.bordered_map == true) {
+
+            if(this.bordered_map == true) {
                 var size = 2**this.network_data.hilbert_order
+                var pixel_size = this.canvas_size / size;
+
                 context.lineWidth = 1;
                 context.strokeStyle = "#C7C7C7";
 
                 for(var x = 0; x < size; x++) {
                     for(var y = 0; y < size; y++) {
-                        context.strokeRect(x*this.pixel_size, y*this.pixel_size, this.pixel_size, this.pixel_size);
+                        context.strokeRect(x*pixel_size, y*pixel_size, pixel_size, pixel_size);
                     }
                 }
             }
         }
 
         // Draw each pixel on canvas
-        var pixels = this.custom.selectAll("custom.rect");
-        var that = this
-        pixels.each(function(d) {
-            var pixel = d3.select(this);
-            context.fillStyle = hidden ? pixel.attr('fillStyleHidden') : pixel.attr('fillStyle');
-            context.fillRect(pixel.attr('x'), pixel.attr('y'), that.pixel_size, that.pixel_size);
+        var pixel_keys = Object.keys(this.pixels);
 
-            if(that.bordered_map == true && hidden == false) {
+        for (const key of pixel_keys) {
+            var pixel = this.pixels[key];
+            context.fillStyle = hidden ? pixel.fillStyleHidden : pixel.fillStyle;
+            context.fillRect(pixel.x, pixel.y, this.pixel_size, this.pixel_size);
+
+            if (this.bordered_map == true && hidden == false) {
                 context.lineWidth = 2;
                 context.strokeStyle = "#C7C7C7";
-                context.strokeRect(pixel.attr('x'), pixel.attr('y'), that.pixel_size, that.pixel_size);
+                context.strokeRect(pixel.x, pixel.y, this.pixel_size, this.pixel_size);
             }
-        });
+        }
 
         this.draw_overlay();
     }
@@ -1035,19 +996,19 @@ class IPVizualizator {
         this.overlay_canvas.on('mousemove',  d => {
             var mouseX = d3.event.layerX || d3.event.offsetX;
 			var mouseY = d3.event.layerY || d3.event.offsetY;
-			var hiddenCtx = this.hidden_canvas_context;
+			var hidden_context = this.hidden_canvas_context;
 
 			// Get unique color representing pixel under the cursor
-			var col = hiddenCtx.getImageData(mouseX, mouseY, 1, 1).data;
-			var colKey = 'rgb(' + col[0] + ',' + col[1] + ',' + col[2] + ')';
+			var col = hidden_context.getImageData(mouseX, mouseY, 1, 1).data;
+			var color_key = 'rgb(' + col[0] + ',' + col[1] + ',' + col[2] + ')';
 
-			var pixelData = this.color_to_pixel[colKey];
-			if (pixelData) {
+			var pixel_data = this.pixels[color_key];
+			if (pixel_data) {
 			    // Get network address of zoom subnet
-			    var ip = this.network_data.network + (pixelData.ip << (32 - this.network_data.pixel_mask)) >>> 0;
+			    var ip = this.network_data.network + (pixel_data.ip << (32 - this.network_data.pixel_mask)) >>> 0;
                 var ip_string =  ( (ip>>>24) +'.' + (ip>>16 & 255) +'.' + (ip>>8 & 255) +'.' + (ip & 255) );
                 var subnet_shift = this.network_data.pixel_mask - this.network_data.prefix_length - this.zoom_mask
-                var subnet = pixelData.ip >>  subnet_shift << subnet_shift
+                var subnet = pixel_data.ip >>  subnet_shift << subnet_shift
 
                 // If zoom subnet changed (cursor moved to pixel in another subnet) redraw overlay
                 if(this.zoomed_subnet != subnet) {
@@ -1055,7 +1016,7 @@ class IPVizualizator {
                     this.draw_overlay();
                 }
 
-                this.show_tooltip('<b>Network:</b> ' + ip_string + '/' + this.network_data.pixel_mask + '<br /><b>Value:</b> ' + pixelData.val);
+                this.show_tooltip('<b>Network:</b> ' + ip_string + '/' + this.network_data.pixel_mask + '<br /><b>Value:</b> ' + pixel_data.val);
 			}
 			else {
 			    // Redraw overlay
