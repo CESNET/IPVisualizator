@@ -16,16 +16,24 @@ class IPVizualizator {
         this.header = this.container.append('div').classed('card-header', true).style('width', this.canvas_size + 'px').style('padding-left', '10px').style('padding-right', '10px');
         this.header_row = this.header.append('div').classed('row', true);
 
-        this.button_back = this.header_row.append('div').classed('col-sm', true).append('div').classed('button-back align-middle border-right',true).style('padding-right', '5px').style('width', '30px');
+        this.button_back = this.header_row.append('div').classed('col', true).append('div').classed('button-back align-middle border-right',true).style('padding-right', '5px').style('width', '30px');
         this.button_back_svg = this.button_back.append('svg').attr('viewBox', '0 0 8 8').style('height', '100%').style('width', '100%').append('path').attr('d', 'M4.5 0c-1.93 0-3.5 1.57-3.5 3.5v.5h-1l2 2 2-2h-1v-.5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5c0-1.93-1.57-3.5-3.5-3.5z').attr('transform','translate(0 1)');
-        this.network_heading = this.header_row.append('div').classed('network-heading col-sm align-middle',true).style('text-align', 'center').style('font-size', '20px').style('cursor', 'pointer');
-        this.menu = this.header_row.append('div').classed('col-sm',true);
-        this.button_config = this.menu.append('div').classed('button-config align-middle border-left float-right',true).style('padding-left', '5px').style('width', '30px').style('cursor', 'pointer');
+        this.network_heading = this.header_row.append('div').classed('network-heading col align-middle',true).style('text-align', 'center').style('font-size', '20px').style('cursor', 'pointer');
+        this.menu = this.header_row.append('div').classed('col',true).append('div').classed('float-right', true);
+        this.button_config = this.menu.append('div').classed('button-config align-middle border-left float-left',true).style('padding-left', '5px').style('padding-right', '5px').style('width', '30px').style('cursor', 'pointer');
         this.button_config_svg = this.button_config.append('svg').attr('viewBox', '0 0 8 8').style('height', '100%').style('width', '100%').append('path').attr('d', 'M3.5 0l-.5 1.19c-.1.03-.19.08-.28.13l-1.19-.5-.72.72.5 1.19c-.05.1-.09.18-.13.28l-1.19.5v1l1.19.5c.04.1.08.18.13.28l-.5 1.19.72.72 1.19-.5c.09.04.18.09.28.13l.5 1.19h1l.5-1.19c.09-.04.19-.08.28-.13l1.19.5.72-.72-.5-1.19c.04-.09.09-.19.13-.28l1.19-.5v-1l-1.19-.5c-.03-.09-.08-.19-.13-.28l.5-1.19-.72-.72-1.19.5c-.09-.04-.19-.09-.28-.13l-.5-1.19h-1zm.5 2.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z');
+        this.button_screenshot = this.menu.append('div').classed('button-screenshot align-middle border-left float-left',true).style('padding-left', '5px').style('width', '25px').style('cursor', 'pointer');
+        this.button_screenshot_svg = this.button_screenshot.append('svg').attr('viewBox', '0 0 8 8').style('height', '100%').style('width', '100%').append('path').attr('d', 'M4.09 0c-.05 0-.1.04-.13.09l-.94 1.81c-.02.05-.07.09-.13.09h-1.41c-.83 0-1.5.67-1.5 1.5v4.41c0 .05.04.09.09.09h7.81c.05 0 .09-.04.09-.09v-5.81c0-.06-.04-.09-.09-.09h-.81c-.05 0-.1-.04-.13-.09l-.94-1.81c-.03-.05-.07-.09-.13-.09h-1.81zm-2.59 3c.28 0 .5.22.5.5s-.22.5-.5.5-.5-.22-.5-.5.22-.5.5-.5zm3.5 0c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 1c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z');
         this.map = this.container.append('div').classed('canvases', true).attr('style', 'position: relative;')
                 .style('width', this.canvas_size+'px')
                 .style('height', this.canvas_size+'px');
 
+
+        this.status_loading = this.map.append('div').classed('spinner-border text-primary',true).attr('role', 'status').style('width', '75px').style('height', '75px').style('position', 'absolute').style('left', (this.canvas_size - 75)/2 +'px').style('top', (this.canvas_size - 75)/2 +'px').style('z-index', '50');
+        this.status_loading.style('display', 'none');
+
+        this.status_error = this.map.append('div').classed('h2 text-danger text-center',true).style('width', this.canvas_size + 'px').style('height', '75px').style('position', 'absolute').style('top', (this.canvas_size - 75)/2 +'px').style('z-index', '51').style('text-shadow', '2px 2px 2px #000000').html("Error je tu a je dlouhy");
+        this.status_error.style('display', 'none');
 
         this.modal_network = this.map.append('div').classed('card', true).style('width', '470px').style('height', '100px').style('position', 'absolute').style('left', (this.canvas_size - 470)/2 +'px').style('top', '0px').style('z-index', '2');
         this.modal_network_body = this.modal_network.append('div').classed('card-body', true);
@@ -40,20 +48,41 @@ class IPVizualizator {
         this.modal_network.style('display', 'none');
 
 
-        this.modal_config = this.map.append('div').classed('card', true).style('width', '280px').style('height', '200px').style('position', 'absolute').style('left', (this.canvas_size - 280) +'px').style('top', '0px').style('z-index', '3');
+        this.modal_config = this.map.append('div').classed('card', true).style('width', '320px').style('height', '350px').style('position', 'absolute').style('left', (this.canvas_size - 320) +'px').style('top', '0px').style('z-index', '3');
         this.modal_config_body = this.modal_config.append('div').classed('card-body', true);
 
         this.modal_config_resolution = this.modal_config_body.append('div').classed('row', true);
-        this.modal_config_resolution_label = this.modal_config_resolution.append('div').classed('col', true).append('label').attr('for', 'resolution_range').html("Resolution");
-        this.modal_config_resolution_range = this.modal_config_resolution.append('div').classed('col', true).append('div').style('width', '60px').append('input').attr('type', 'range').classed('custom-range', true).attr('id', 'resolution_range').attr('step', 2);
-        this.modal_config_resolution_value = this.modal_config_resolution.append('div').classed('col', true).append('span').classed('font-weight-bold text-primary', true);
+        this.modal_config_resolution_label = this.modal_config_resolution.append('div').classed('col-6', true).append('label').attr('for', 'resolution_range').html("Resolution");
+        this.modal_config_resolution_range = this.modal_config_resolution.append('div').classed('col-3', true).append('div').append('input').attr('type', 'range').classed('custom-range', true).attr('id', 'resolution_range').attr('step', 2);
+        this.modal_config_resolution_value = this.modal_config_resolution.append('div').classed('col-3', true).append('span').classed('font-weight-bold text-primary', true);
 
         this.modal_config_zoom = this.modal_config_body.append('div').classed('row', true);
-        this.modal_config_zoom_label = this.modal_config_zoom.append('div').classed('col', true).append('label').attr('for', 'zoom_range').html("Zoom");
-        this.modal_config_zoom_range = this.modal_config_zoom.append('div').classed('col', true).append('div').style('margin-left', '32px').style('width', '60px').append('input').attr('type', 'range').classed('custom-range', true).attr('id', 'zoom_range').attr('step', 2);
-        this.modal_config_zoom_value = this.modal_config_zoom.append('div').classed('col', true).append('span').classed('font-weight-bold text-primary', true);
+        this.modal_config_zoom_label = this.modal_config_zoom.append('div').classed('col-6', true).append('label').attr('for', 'zoom_range').html("Zoom");
+        this.modal_config_zoom_range = this.modal_config_zoom.append('div').classed('col-3', true).append('div').append('input').attr('type', 'range').classed('custom-range', true).attr('id', 'zoom_range').attr('step', 2);
+        this.modal_config_zoom_value = this.modal_config_zoom.append('div').classed('col-3', true).append('span').classed('font-weight-bold text-primary', true);
 
-        this.modal_config_button_cancel = this.modal_config_body.append('button').classed('cancel btn btn-secondary', true).html('Close').style('margin-left', '85px').style('margin-top', '20px');
+        this.modal_config_map_opacity = this.modal_config_body.append('div').classed('row mt-4', true);
+        this.modal_config_map_opacity_label = this.modal_config_map_opacity.append('div').classed('col-6', true).append('label').attr('for', 'map_opacity').html("Map opacity");
+        this.modal_config_map_opacity_range = this.modal_config_map_opacity.append('div').classed('col-3', true).append('div').append('input').attr('type', 'range').classed('custom-range', true).attr('id', 'map_opacity').attr('step', 0.05).attr('min', 0).attr('max', 1);
+        this.modal_config_map_opacity_value = this.modal_config_map_opacity.append('div').classed('col-3', true).append('span').classed('font-weight-bold text-primary', true);
+
+        this.modal_config_overlay_show = this.modal_config_body.append('div').classed('row mb-2', true);
+        this.modal_config_overlay_show_label = this.modal_config_overlay_show.append('div').classed('col-6 text-nowrap', true).html('Show overlay');
+        this.modal_config_overlay_show_switch = this.modal_config_overlay_show.append('div').classed('col-3 custom-control custom-switch', true);
+        this.modal_config_overlay_show_checkbox = this.modal_config_overlay_show_switch.append('input').attr('type', 'checkbox').classed('custom-control-input position-static', true).attr('id', 'overlay_show');
+        this.modal_config_overlay_show_empty_label = this.modal_config_overlay_show_switch.append('label').classed('custom-control-label', true).attr('for', 'overlay_show').html('');
+
+        this.modal_config_overlay_opacity = this.modal_config_body.append('div').classed('row', true);
+        this.modal_config_overlay_opacity_label = this.modal_config_overlay_opacity.append('div').classed('col-6 text-nowrap', true).append('label').attr('for', 'overlay_opacity').html("Overlay opacity");
+        this.modal_config_overlay_opacity_range = this.modal_config_overlay_opacity.append('div').classed('col-3', true).append('div').append('input').attr('type', 'range').classed('custom-range', true).attr('id', 'overlay_opacity').attr('step', 0.05).attr('min', 0).attr('max', 1);
+        this.modal_config_overlay_opacity_value = this.modal_config_overlay_opacity.append('div').classed('col-3', true).append('span').classed('font-weight-bold text-primary', true);
+
+        this.modal_config_overlay_thickness = this.modal_config_body.append('div').classed('row', true);
+        this.modal_config_overlay_thickness_label = this.modal_config_overlay_thickness.append('div').classed('col-6 text-nowrap', true).append('label').attr('for', 'overlay_thickness').html("Overlay thickness");
+        this.modal_config_overlay_thickness_range = this.modal_config_overlay_thickness.append('div').classed('col-3', true).append('div').append('input').attr('type', 'range').classed('custom-range', true).attr('id', 'overlay_thickness').attr('step', 1).attr('min', 1).attr('max', 10);
+        this.modal_config_overlay_thickness_value = this.modal_config_overlay_thickness.append('div').classed('col-3', true).append('span').classed('font-weight-bold text-primary', true);
+
+        this.modal_config_button_cancel = this.modal_config_body.append('button').classed('cancel btn btn-secondary', true).html('Close').style('margin-left', '105px').style('margin-top', '20px');
 
         this.modal_config.style('opacity', '0.95');
         this.modal_config.style('display', 'none');
@@ -175,7 +204,11 @@ class IPVizualizator {
         this.container.style('width', (this.canvas_size + 2) + 'px');
         this.header.style('width', this.canvas_size + 'px');
         this.modal_network.style('left', (this.canvas_size - 470)/2 +'px');
-        this.modal_config.style('left', (this.canvas_size - 280) +'px');
+        this.modal_config.style('left', (this.canvas_size - 320) +'px');
+        this.status_loading.style('left', (this.canvas_size - 75) /2 +'px');
+        this.status_loading.style('top', (this.canvas_size - 75) /2 +'px');
+        this.status_error.style('top', (this.canvas_size - 75) /2 +'px');
+        this.status_error.style('width',this.canvas_size +'px');
     }
 
     get_network_data() {
@@ -213,6 +246,9 @@ class IPVizualizator {
         return col;
     }
     update() {
+        this.status_error.style('display', 'none');
+        this.status_loading.style('display', 'initial');
+
         const api_call_url = this.create_api_call_url();
         
         $.get(api_call_url, data => {
@@ -222,7 +258,20 @@ class IPVizualizator {
             this.draw(true);
             this.draw_overlay();
             this.draw_menu();
-        });
+            this.status_loading.style('display', 'none');
+            })
+            .fail(data => {
+                this.status_loading.style('display', 'none');
+                if(data.responseJSON != null) {
+                    this.status_error.html("Error: " + data.responseJSON.detail);
+                    this.status_error.style('display', 'initial');
+                }
+                else {
+                    this.status_error.html("Can't load map");
+                    this.status_error.style('display', 'initial');
+                }
+            }
+            );
     }
 
     databind() {
@@ -514,6 +563,24 @@ class IPVizualizator {
         this.update();
 
     }
+
+    take_screenshot() {
+        var screenshot_canvas = d3.select(document.createElement('canvas'));
+        var screenshot_context = screenshot_canvas.node().getContext('2d');
+        screenshot_canvas.attr('width', this.canvas_size).attr('height', this.canvas_size);
+        screenshot_context.drawImage(this.canvas.node(), 0, 0, this.canvas_size, this.canvas_size);
+        screenshot_context.drawImage(this.overlay_canvas.node(), 0, 0, this.canvas_size, this.canvas_size);
+        var image = screenshot_canvas.node().toDataURL('image/png');
+        var that = this;
+        fetch(image).then(function(t) {
+            return t.blob().then((b)=>{
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(b);
+                a.setAttribute('download', 'map_' + that.network.replace(/\./g, '-') +'_'+ that.mask +'.png');
+                a.click();
+            });
+        });
+    }
     
     add_listeners() {
         this.overlay_canvas.on('mousemove',  d => {
@@ -697,6 +764,22 @@ class IPVizualizator {
                 this.modal_config_zoom_range.property('max', this.resolution);
                 this.modal_config_resolution_range.property('min', 0);
                 this.modal_config_resolution_range.property('max', this.mask + 16 <= 32 ? 16 : 32 - this.mask );
+                this.modal_config_map_opacity_range.property('value', this.map_opacity);
+                this.modal_config_map_opacity_value.html(this.map_opacity);
+                this.modal_config_overlay_opacity_range.property('value', this.overlay_opacity);
+                this.modal_config_overlay_opacity_value.html(this.overlay_opacity);
+                this.modal_config_overlay_thickness_range.property('value', this.overlay_thickness);
+                this.modal_config_overlay_thickness_value.html(this.overlay_thickness);
+                this.modal_config_overlay_show_checkbox.property('checked', this.overlay_show);
+
+                if(this.overlay_show == true) {
+                    this.modal_config_overlay_opacity_range.attr('disabled', null);
+                    this.modal_config_overlay_thickness_range.attr('disabled', null);
+                }
+                else {
+                    this.modal_config_overlay_opacity_range.attr('disabled', true);
+                    this.modal_config_overlay_thickness_range.attr('disabled', true);
+                }
 
 
                 this.modal_config.style('display', 'initial');
@@ -706,14 +789,14 @@ class IPVizualizator {
                 this.modal_config.style('display', 'none');
             }
         });
-        this.modal_config_resolution_range.on('input',  d => {
-            this.modal_config_resolution_value.html('+ /'+ this.modal_config_resolution_range.node().value);
-        });
         this.modal_config_zoom_range.on('input',  d => {
             this.modal_config_zoom_value.html('+ /'+ this.modal_config_zoom_range.node().value);
         });
         this.modal_config_zoom_range.on('change',  d => {
             this.zoom_mask = parseInt(this.modal_config_zoom_range.node().value);
+        });
+        this.modal_config_resolution_range.on('input',  d => {
+            this.modal_config_resolution_value.html('+ /'+ this.modal_config_resolution_range.node().value);
         });
         this.modal_config_resolution_range.on('change',  d => {
             this.resolution = parseInt(this.modal_config_resolution_range.node().value);
@@ -725,6 +808,62 @@ class IPVizualizator {
         });
         this.modal_config_button_cancel.on('click',  d => {
             this.modal_config.style('display', 'none');
+        });
+        this.modal_config_map_opacity_range.on('input',  d => {
+            this.modal_config_map_opacity_value.html(this.modal_config_map_opacity_range.node().value);
+        });
+        this.modal_config_map_opacity_range.on('change',  d => {
+            this.map_opacity = parseFloat(this.modal_config_map_opacity_range.node().value);
+            this.draw_overlay();
+        });
+        this.modal_config_overlay_opacity_range.on('input',  d => {
+            this.modal_config_overlay_opacity_value.html(this.modal_config_overlay_opacity_range.node().value);
+        });
+        this.modal_config_overlay_opacity_range.on('change',  d => {
+            this.overlay_opacity = parseFloat(this.modal_config_overlay_opacity_range.node().value);
+            this.draw_overlay();
+        });
+        this.modal_config_overlay_thickness_range.on('input',  d => {
+            this.modal_config_overlay_thickness_value.html(this.modal_config_overlay_thickness_range.node().value);
+        });
+        this.modal_config_overlay_thickness_range.on('change',  d => {
+            this.overlay_thickness = parseFloat(this.modal_config_overlay_thickness_range.node().value);
+            this.draw_overlay();
+        });
+        this.modal_config_overlay_show_checkbox.on('change',  d => {
+            this.overlay_show = this.modal_config_overlay_show_checkbox.node().checked;
+            if(this.overlay_show == true) {
+                this.modal_config_overlay_opacity_range.attr('disabled', null);
+                this.modal_config_overlay_thickness_range.attr('disabled', null);
+            }
+            else {
+                this.modal_config_overlay_opacity_range.attr('disabled', true);
+                this.modal_config_overlay_thickness_range.attr('disabled', true);
+            }
+            this.draw_overlay();
+        });
+        this.button_screenshot.on('mouseout',  d => {
+            this.button_screenshot_svg.attr('fill', 'black');
+            this.tooltip.style('opacity', 0);
+        });
+        this.button_screenshot.on('mousemove',  d => {
+            this.button_screenshot_svg.attr('fill', '#0275d8');
+            this.tooltip
+                .style('opacity', 0.8)
+                .style('top', d3.event.pageY + 5 + 'px')
+                .style('left', d3.event.pageX + 5 + 'px')
+                .html("Take screenshot of map");
+        });
+
+        this.button_screenshot.on('click',  d => {
+            this.take_screenshot();
+        });
+        this.button_screenshot.on('mousemove',  d => {
+            this.tooltip
+                .style('opacity', 0.8)
+                .style('top', d3.event.pageY + 5 + 'px')
+                .style('left', d3.event.pageX + 5 + 'px')
+                .html("Take screenshot of map");
         });
     }
     
