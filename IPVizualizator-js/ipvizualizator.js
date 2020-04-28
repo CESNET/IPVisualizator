@@ -24,7 +24,7 @@ class IPVizualizator {
         }
 
         // Configuration parameters
-        this.api = args.api;
+        this.api = args.api.replace(/\/\s*$/, '');;
         this.token = args.token;
         this.network = args.network;
         this.mask = args.mask;
@@ -39,7 +39,7 @@ class IPVizualizator {
         this.zoom_mask = 'zoom_mask' in config ? config.zoom_mask : 8;
         this.map_opacity = 'map_opacity' in config ? config.map_opacity : 1.0;
         this.overlay_opacity = 'overlay_opacity' in config ? config.overlay_opacity : 1.0;
-        this.overlay_thickness = 'map_thickness' in config ? config.map_thickness : 1;
+        this.overlay_thickness = 'overlay_thickness' in config ? config.overlay_thickness : 1;
         this.overlay_color = 'overlay_color' in config ? config.overlay_color : '#ffff00';
         this.overlay_text_position = 'overlay_text_position' in config ? config.overlay_text_position : 'inside';
         this.show_overlay = 'show_overlay' in config ? config.show_overlay : true;
