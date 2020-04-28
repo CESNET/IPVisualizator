@@ -5,6 +5,10 @@
 * Released under Apache license v2.0
 * */
 
+/*jslint bitwise: true */
+/*jslint esversion: 6 */
+
+
 class IPVizualizator {
 
     constructor(args) {
@@ -44,7 +48,7 @@ class IPVizualizator {
         this.zoom_color = 'zoom_color' in config ? config.zoom_color : '#ff0000';
 
         // Specified networks which will be highlighted
-        this.overlay_subnets = []
+        this.overlay_subnets = [];
         if('overlay_networks' in args) {
             for (const net of args.overlay_networks) {
                 var network = this.convert_network_from_string(net.network);
@@ -85,7 +89,7 @@ class IPVizualizator {
 
     convert_ip_from_string(ip_string) {
         var ip = ip_string.split('.').reduce(function (ipInt, octet) {
-            return (ipInt << 8) + parseInt(octet, 10)
+            return (ipInt << 8) + parseInt(octet, 10);
         }, 0) >>> 0;
         return ip;
     }
@@ -118,7 +122,7 @@ class IPVizualizator {
         var ip = this.convert_ip_from_string(network[0]);
         var network_portion = ip >>> (32-mask) << (32-mask) >>>0;
 
-        if(ip != network_portion) {
+        if(ip != network_portion || (mask == 0 && ip != 0)) {
             return [false, 'IP is not valid network address'];
         }
 
@@ -126,18 +130,18 @@ class IPVizualizator {
     }
 
     hilbert_i_to_xy(index, order) {
-        var state = 0
-        var x = 0
-        var y = 0
+        var state = 0;
+        var x = 0;
+        var y = 0;
 
         for (var it = 2 * order - 2; it > -2; it = it - 2) {
-            var row = 4 * state | ((index >> it) & 3)
-            x = (x << 1) | ((0x936C >> row) & 1)
-            y = (y << 1) | ((0x39C6 >> row) & 1)
-            state = (0x3E6B94C1 >> 2 * row) & 3
+            var row = 4 * state | ((index >> it) & 3);
+            x = (x << 1) | ((0x936C >> row) & 1);
+            y = (y << 1) | ((0x39C6 >> row) & 1);
+            state = (0x3E6B94C1 >> 2 * row) & 3;
         }
 
-        return [x, y]
+        return [x, y];
     }
 
     generate_next_color() {
@@ -175,7 +179,7 @@ class IPVizualizator {
     }
 
     set_canvas_size(size) {
-        var size = size in this.Size ? this.Size[size] : this.canvas_size;
+        size = size in this.Size ? this.Size[size] : this.canvas_size;
         if(size == this.canvas_size) return;
 
         var context = this.canvas_context;
@@ -220,17 +224,12 @@ class IPVizualizator {
     // ------- Data binding --------
 
     create_api_call_url() {
-        return this.api + "/vizualizator/"
-                        + this.token
-                        + "/map/"
-                        + this.network
-                        + "/"
-                        + this.mask
-                        + "?resolution="
-                        + (this.mask + this.resolution)
-                        + "&skip_zeros="
-                        + this.skip_zeros
-                        + "&raw_data=true";
+        return this.api + "/vizualizator/" + this.token +
+                          "/map/" + this.network +
+                          "/" + this.mask +
+                          "?resolution=" + (this.mask + this.resolution) +
+                          "&skip_zeros=" + this.skip_zeros +
+                          "&raw_data=true";
     }
 
     update() {
@@ -268,7 +267,7 @@ class IPVizualizator {
         this.color_map.domain([parseFloat(this.network_data.min_value), parseFloat(this.network_data.max_value)]);
 
         // Compute pixel size
-        this.pixel_size = Math.floor(this.canvas_size / (2**this.network_data.hilbert_order));
+        this.pixel_size = Math.floor(this.canvas_size / Math.pow(2,this.network_data.hilbert_order));
 
         // Clear old pixels
         this.pixels = {};
@@ -295,7 +294,7 @@ class IPVizualizator {
         }
 
         // Data is binded in pixels variable  -> pixels in response from server is not longer needed
-        delete this.network_data['pixels'];
+        delete this.network_data.pixels;
     }
 
     // ------- Render canvases --------
@@ -314,7 +313,7 @@ class IPVizualizator {
             context.fillRect(0, 0, this.canvas_size, this.canvas_size);
 
             if(this.bordered_map == true) {
-                var size = 2**this.network_data.hilbert_order
+                var size = Math.pow(2, this.network_data.hilbert_order);
                 var pixel_size = this.canvas_size / size;
 
                 context.lineWidth = 1;
@@ -364,6 +363,16 @@ class IPVizualizator {
         context.shadowOffsetY = 1;
         context.globalAlpha = this.overlay_opacity;
 
+        var coords;
+        var coords_next_index;
+        var size;
+        var width;
+        var height;
+        var x;
+        var y;
+        var ip;
+        var text_width;
+
         // Overlay subnets
         if(this.show_overlay == true) {
             for (const subnet of this.overlay_subnets) {
@@ -375,16 +384,16 @@ class IPVizualizator {
                 // Is subnet displayed on this map?
                 if (this.network_data.network == ip_network) {
                     // Get coordinates of network address pixel
-                    var ip = (subnet.ip >> 32 - this.network_data.pixel_mask) << 32 - this.network_data.pixel_mask >>> 0;
+                    ip = (subnet.ip >> 32 - this.network_data.pixel_mask) << 32 - this.network_data.pixel_mask >>> 0;
                     var index = (ip - this.network_data.network) >>> 32 - this.network_data.pixel_mask;
-                    var coords = this.hilbert_i_to_xy(index, this.network_data.hilbert_order);
-                    var coords_next_index = this.hilbert_i_to_xy(index + 1, this.network_data.hilbert_order);
+                    coords = this.hilbert_i_to_xy(index, this.network_data.hilbert_order);
+                    coords_next_index = this.hilbert_i_to_xy(index + 1, this.network_data.hilbert_order);
 
                     // Get size of subnet
-                    var size = 2 ** (this.network_data.hilbert_order - (subnet.mask - this.network_data.prefix_length) / 2)
+                    size = Math.pow(2, (this.network_data.hilbert_order - (subnet.mask - this.network_data.prefix_length) / 2));
                     size = size >= 1 ? size : 1;
-                    var width = this.pixel_size * size;
-                    var height = this.pixel_size * size;
+                    width = this.pixel_size * size;
+                    height = this.pixel_size * size;
 
                     // If displayed map is subnet of this subnet don't draw it
                     if(width > this.canvas_size) continue;
@@ -393,8 +402,8 @@ class IPVizualizator {
                     context.strokeStyle = "color" in subnet ? subnet.color : this.overlay_color;
 
                     // Determinate whether network address pixel is in left upper or right lower corner of subnet rectangle
-                    var x = 0;
-                    var y = 0;
+                    x = 0;
+                    y = 0;
                     if (coords[0] <= coords_next_index[0] && coords[1] <= coords_next_index[1]) {
                         x = coords[0] * this.pixel_size;
                         y = coords[1] * this.pixel_size;
@@ -422,7 +431,7 @@ class IPVizualizator {
                         else {
                             context.font = "bold 20px Arial";
                             font_size = 20;
-                            var text_width = context.measureText(subnet.text).width;
+                            text_width = context.measureText(subnet.text).width;
 
                             // Don't overflow canvas boundaries
                             if (y < 25) {
@@ -463,19 +472,19 @@ class IPVizualizator {
 
         if(this.zoomed_subnet != null && this.static == false) {
             // Get coordinates of network address pixel of zoom subnet
-            var coords = this.hilbert_i_to_xy(this.zoomed_subnet,this.network_data.hilbert_order);
-            var coords_next_index = this.hilbert_i_to_xy(this.zoomed_subnet+1,this.network_data.hilbert_order);
+            coords = this.hilbert_i_to_xy(this.zoomed_subnet,this.network_data.hilbert_order);
+            coords_next_index = this.hilbert_i_to_xy(this.zoomed_subnet+1,this.network_data.hilbert_order);
 
             // Get size of subnet
-            var size = 2**(this.network_data.hilbert_order - this.zoom_mask / 2)
+            size = Math.pow(2,(this.network_data.hilbert_order - this.zoom_mask / 2));
             size = size >= 1 ? size : 1;
-            var width = this.pixel_size * size;
-            var height = this.pixel_size * size;
+            width = this.pixel_size * size;
+            height = this.pixel_size * size;
 
 
             // Determinate whether network address pixel is in left upper or right lower corner of subnet rectangle
-            var x = 0;
-            var y = 0;
+            x = 0;
+            y = 0;
             if(coords[0] <= coords_next_index[0] && coords[1] <= coords_next_index[1]) {
                 x = coords[0] * this.pixel_size;
                 y = coords[1] * this.pixel_size;
@@ -494,12 +503,12 @@ class IPVizualizator {
             context.strokeRect(x, y, width, height);
 
             // Prepare text for zoom subnet
-            var ip = this.network_data.network + (this.zoomed_subnet << (32 - this.network_data.pixel_mask));
+            ip = this.network_data.network + (this.zoomed_subnet << (32 - this.network_data.pixel_mask));
             ip =  this.convert_ip_to_string(ip);
             var mask = this.network_data.prefix_length + this.zoom_mask;
             mask = mask <= 32 ? mask : 32;
             var subnet_text = ip + "/" + mask;
-            var text_width = context.measureText(subnet_text).width;
+            text_width = context.measureText(subnet_text).width;
 
             // Don't overflow canvas boundaries
             if(y < 25) {
@@ -815,7 +824,7 @@ class IPVizualizator {
             .attr("type", "checkbox")
             .classed("custom-control-input position-static", true)
             .attr("id", "overlay_show");
-        var modal_config_overlay_show_empty_label = modal_config_overlay_show_switch
+        modal_config_overlay_show_switch
             .append("label")
             .classed("custom-control-label", true)
             .attr("for", "overlay_show")
@@ -1007,8 +1016,8 @@ class IPVizualizator {
 			    // Get network address of zoom subnet
 			    var ip = this.network_data.network + (pixel_data.ip << (32 - this.network_data.pixel_mask)) >>> 0;
                 var ip_string =  ( (ip>>>24) +'.' + (ip>>16 & 255) +'.' + (ip>>8 & 255) +'.' + (ip & 255) );
-                var subnet_shift = this.network_data.pixel_mask - this.network_data.prefix_length - this.zoom_mask
-                var subnet = pixel_data.ip >>  subnet_shift << subnet_shift
+                var subnet_shift = this.network_data.pixel_mask - this.network_data.prefix_length - this.zoom_mask;
+                var subnet = pixel_data.ip >>  subnet_shift << subnet_shift;
 
                 // If zoom subnet changed (cursor moved to pixel in another subnet) redraw overlay
                 if(this.zoomed_subnet != subnet) {
