@@ -119,10 +119,77 @@
                     <input type="number" class="form-control" id="overlay_thickness" min="1" max="10" step="1" value="1">
                 </div>
             </div>
-
+            <div class="form-group">
+                <label for="overlay_subnets">Zvýrazněné sítě</label>
+                <textarea type="text" class="form-control" id="overlay_subnets" rows=15>[
+  {
+   "text": "Reserved",
+   "network": "0.0.0.0/8"
+  },
+  {
+   "text": "Unallocated",
+   "network": "1.0.0.0/8"
+  },
+  {
+   "text": "Public\nData Network",
+   "network": "14.0.0.0/8"
+  },
+  {
+   "text": "GE",
+   "network": "3.0.0.0/8"
+  },
+  {
+   "text": "Unallocated",
+   "network": "2.0.0.0/8"
+  },
+  {
+   "text": "Xerox",
+   "network": "13.0.0.0/8"
+  },
+  {
+   "text": "RIPE",
+   "network": "80.0.0.0/4"
+  },
+  {
+   "text": "Multicast",
+   "network": "224.0.0.0/4"
+  },
+  {
+   "text": "Reserved",
+   "network": "240.0.0.0/4"
+  }
+ ]
+                </textarea>
+            </div>
             <button type="button" id="form-send"  class="btn btn-primary">Zobrazit</button>
         </form>
-        <div id="map"></div>
+        <div class="mt-4 mb-4">
+            <div id="vizualizator"></div>
+        </div>
+
+        <div id="map_insert">
+            <h5 class="pt-4">Vložení mapy na vlastní stránku:</h5>
+            <ol>
+                <li>Přidejte na stránku CSS styl:</li>
+                <pre><code>&lt;link rel=&quot;stylesheet&quot; href=&quot;https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css&quot;&gt;</code></pre>
+
+                <li>Pridejte na stránku následující javascriptové knihovny:</li>
+                <pre>
+                    <code>
+                        &nbsp;&lt;script src=&quot;https://code.jquery.com/jquery-3.4.1.min.js&quot;&gt;&lt;/script&gt;
+                        &nbsp;&lt;script src=&quot;https://d3js.org/d3.v5.min.js&quot;&gt;&lt;/script&gt;
+                        &nbsp;&lt;script src=&quot;https://d3js.org/d3-scale-chromatic.v1.min.js&quot;&gt;&lt;/script&gt;
+                        &nbsp;&lt;script src=&quot;http://127.0.0.1/ipvizualizator.js&quot;&gt;&lt;/script&gt;
+                    </code>
+                </pre>
+
+                <li>Vložte mapu pomocí kódu:</li>
+                <pre class="pre-scrollable">
+                    <code id="code">
+                    </code>
+                </pre>
+            </ol>
+        </div>
     </div>
 
     <!-- jQuery first, Bootstrap JS, D3.js -->
@@ -131,7 +198,7 @@
     <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
     <script src="../IPVizualizator-js/ipvizualizator.js"></script>
     <script>
-
+        $('#map_insert').hide();
         $(document).ready(function(){
             $("#form-send").click(function(){
                 const api = $("#api").val();
@@ -153,12 +220,13 @@
                 const overlay_color = $("#overlay_color").val();
                 const zoom_color = $("#zoom_color").val();
                 const overlay_text_position = $("#overlay_text_position").val();
+                const overlay_subnets = JSON.parse($("#overlay_subnets").val());
 
 
-                $('#map').empty();
+                $('#vizualizator').empty();
 
-                const vizualizator = new IPVizualizator({
-                    "id": "#map",
+                const parameters = {
+                    "id": "#vizualizator",
                     "api": api,
                     "token": token,
                     "network": network,
@@ -180,47 +248,21 @@
                         "zoom_color": zoom_color,
                         "overlay_text_position": overlay_text_position
                     },
-                    "overlay_networks": [
-                        {
-                            "text": "Reserved",
-                            "network": "0.0.0.0/8"
-                        },
-                        {
-                            "text": "Unallocated",
-                            "network": "1.0.0.0/8"
-                        },
-                        {
-                            "text": "Public\nData Network",
-                            "network": "14.0.0.0/8"
-                        },
-                        {
-                            "text": "GE",
-                            "network": "3.0.0.0/8"
-                        },
-                        {
-                            "text": "Unallocated",
-                            "network": "2.0.0.0/8"
-                        },
-                        {
-                            "text": "Xerox",
-                            "network": "13.0.0.0/8",
-                        },
-                        {
-                            "text": "RIPE",
-                            "network": "80.0.0.0/4"
-                        },
-                        {
-                            "text": "Multicast",
-                            "network": "224.0.0.0/4"
-                        },
-                        {
-                            "text": "Reserved",
-                            "network": "240.0.0.0/4"
-                        }
-                    ]
-                });
+                    "overlay_networks": overlay_subnets
+                }
 
+                const vizualizator = new IPVizualizator(parameters);
 
+                $('#map_insert').show();
+
+                $('#code').html(
+                    '&lt;div id=&quot;vizualizator&quot;&gt;&lt;/div&gt;\n' +
+                    '&lt;script&gt;\n' +
+                    '   const vizualizator = new IPVizualizator(\n' +
+                    JSON.stringify(parameters, null, ' ') +
+                    ');\n' +
+                    '&lt;/script&gt;'
+                );
             });
         }); 
     </script>
