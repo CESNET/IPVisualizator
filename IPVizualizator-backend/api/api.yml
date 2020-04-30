@@ -21,7 +21,7 @@ tags:
 - name: "Vizualizator"
   description: "Add and update IP data"
 - name: "Map"
-  description: "Get heatmap for given network"
+  description: "Get map for given network"
 - name: "User"
   description: "Operations with users"
 
