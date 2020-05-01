@@ -1137,6 +1137,14 @@ class IPVizualizator {
             this.mask = network[2];
             this.zoomed_subnet = null;
 
+            if(this.resolution + this.mask > 32) {
+                this.resolution = 32 - this.mask;
+            }
+
+            if(this.zoom_mask > this.resolution) {
+                this.zoom_mask = this.resolution ;
+            }
+
             this.modal_network_error.html('');
             this.modal_network_form_network.property('value', '');
             this.modal_network.style('display', 'none');
