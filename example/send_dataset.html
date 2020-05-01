@@ -9,14 +9,21 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     <link rel="stylesheet" href="../IPVizualizator-js/IPVizualizator.css">
 
-    <title>IP Vizualizator: Upload dataset</title>
+    <title>IP Vizualizator: Nahrání datasetu</title>
   </head>
   <body>
     <div class="container" style="margin-top: 20px;">
-        <center><h1 class="display-4">IP vizualizator: Upload dataset</h1></center>
-        <form>
+        <center><h1 class="display-4">IP vizualizator</h1></center>
+        <h3 class="pt-4">Nahrání datasetu</h3>
+        <p class="pt-4">Pomocí formuláře níže můžete nahrát data. K tomu potřebujete autorizační token, který získáte <a href="create_user.html">zde</a>.</p>
+        <p>Data si můžete zobrazit <a href="index.html">zde</a>.</p>
+        <form class="pt-4 pb-4">
             <div class="form-group">
-                <label for="data">Data in JSON format</label>
+                <label for="token">Autorizační token</label>
+                <input type="text" class="form-control" id="token" value="">
+            </div>
+            <div class="form-group">
+                <label for="data">Data v JSON</label>
                 <textarea type="text" class="form-control" id="data" rows=15>{
   "ips": [
     {
@@ -30,7 +37,7 @@
   ]
 }</textarea>
             </div>
-            <button type="button" id="form-send"  class="btn btn-primary">Send</button>
+            <button type="button" id="form-send"  class="btn btn-primary">Poslat</button>
         </form>
         <div id="success" class="alert alert-success" role="alert">
         </div>
@@ -52,6 +59,7 @@
             
             $("#form-send").click(function(){
                 data = $("#data").val();
+                token = $("#token").val();
                 
                 api_call_url = "http://127.0.0.1:8080/api/v1/vizualizator";
  
@@ -59,19 +67,19 @@
                 ({
                 type: "POST",
                 url: api_call_url,
-                headers: {"Authorization": "73aa9c477b24e4bc11795bc92d550dd7"},
+                headers: {"Authorization": token},
                 contentType: "application/json",
                 dataType: 'json',
                 data: data,
                 success: function (data){
                     $("#error").hide();
-                    $("#success").text("Dataset created. Dataset token is: "+ data.token);
+                    $("#success").html("Dataset vytvořen. Token datasetu je <b>"+ data.token + "</b>");
                     $("#success").show();
                      
                 },
                 error: function (data){
                     $("#success").hide();
-                    $("#error").text("Something went wrong: "+ data.responseJSON.detail);
+                    $("#error").html("Něco se pokazilo: <b>"+ data.responseJSON.detail + "</b>");
                     $("#error").show();
                 }
                 });
