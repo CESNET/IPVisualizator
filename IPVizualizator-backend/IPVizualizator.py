@@ -1,12 +1,14 @@
 #!/usr/bin/python3
 """
-IPVizualizator API Backend
+IPVizualizator API Backend v0.9
+
+Copyright (c) 2020 Jakub Jancicka <jancijak@fit.cvut.cz>
+Released under Apache license v2.0
 """
 
 import sys
 import connexion
 from connexion.exceptions import OAuthProblem
-import datetime
 import math
 import logging
 from ipaddress import IPv4Address, IPv4Network
@@ -40,24 +42,28 @@ def is_ip(val):
 def convert_ip_data_from_csv(records):
     ips = {}
 
-    for record in records.splitlines():
-        record = record.decode("UTF-8").strip()
+    for row in records.splitlines():
+        row = row.decode("UTF-8").strip()
 
         # Skip comments and empty lines
-        if len(record) == 0 or record[0] == "#":
+        if len(row) == 0 or row[0] == "#":
             continue
 
-        record = record.split(',')
+        record = row.split(',')
 
-        # TODO napis kde se stala chyba v jakem zaznamu
         if len(record) != 2:
-            raise ValueError
+            raise Exception('Row "{}" is not valid CSV format.'.format(row))
 
         if IP_RE.match(record[0]) is None:
-            raise ValueError
+            raise Exception('"{}" is not valid IP address.'.format(record[0]))
 
         ip = record[0]
-        value = float(record[1])
+
+        try:
+            value = float(record[1])
+        except ValueError:
+            raise Exception('"{}" is not valid float number.'.format(record[1]))
+
         ips[ip] = value
 
     return ips
@@ -67,17 +73,14 @@ def convert_ip_data_from_csv(records):
 
 
 def create_new_dataset_api(user, records):
-    logger.info("zacatek: {}".format(datetime.datetime.utcnow()))
-
     try:
         records = convert_ip_data_from_csv(records)
-    except ValueError:
-        return {"status": 400, "detail": "CSV format, some IP or value is invalid."}, 400
+    except Exception as e:
+        return {"status": 400, "detail": str(e)}, 400
 
     if len(records) == 0:
         return {"status": 400, "detail": "No data provided."}, 400
 
-    logger.info("zpracovano csv: {}".format(datetime.datetime.utcnow()))
     user = db.find_user_by_uid(user)
     dataset = db.create_dataset(records, user)
 
@@ -94,11 +97,13 @@ def get_dataset_metadata_api(user, token):
         return {"status": 401, "detail": "User doesn't have a permission to manipulate with this dataset"}, 401
 
     metadata = db.get_dataset_metadata(token)
+
     user = {"uid": metadata.user.uid, "username": metadata.user.username, "authorization": metadata.user.authorization,
             "admin": metadata.user.admin, "owned_datasets": metadata.user.owned_datasets}
 
     return {"token": metadata.token, "user": user, "size": metadata.size, "dataset_created": metadata.dataset_created,
             "dataset_updated": metadata.dataset_updated, "dataset_viewed": metadata.dataset_viewed}
+
 
 def update_dataset_api(user, token, records):
     if db.dataset_exist(token) is False:
@@ -111,18 +116,18 @@ def update_dataset_api(user, token, records):
 
     try:
         records = convert_ip_data_from_csv(records)
-    except ValueError:
-        return {"status": 400, "detail": "CSV format, some IP or value is invalid."}, 400
+    except Exception as e:
+        return {"status": 400, "detail": str(e)}, 400
 
     if len(records) == 0:
         return {"status": 400, "detail": "No data provided."}, 400
 
-    dataset = db.update_dataset(token, records, update="set")
+    db.update_dataset(token, records, update="set")
 
     return {"status": 200}, 200
 
 
-def patch_dataset_api(user, token, records, incr=False, decr=False, ):
+def patch_dataset_api(user, token, records, incr=False, decr=False):
     if db.dataset_exist(token) is False:
         return {"status": 404, "detail": "Dataset not found"}, 404
 
@@ -133,18 +138,18 @@ def patch_dataset_api(user, token, records, incr=False, decr=False, ):
 
     try:
         records = convert_ip_data_from_csv(records)
-    except ValueError:
-        return {"status": 400, "detail": "CSV format, some IP or value is invalid."}, 400
+    except Exception as e:
+        return {"status": 400, "detail": str(e)}, 400
 
     if len(records) == 0:
         return {"status": 400, "detail": "No data provided."}, 400
 
     if incr is True:
-        dataset = db.update_dataset(token, records, update="incr")
+        db.update_dataset(token, records, update="incr")
     elif decr is True:
-        dataset = db.update_dataset(token, records, update="decr")
+        db.update_dataset(token, records, update="decr")
     else:
-        dataset = db.update_dataset(token, records, update="patch")
+        db.update_dataset(token, records, update="patch")
 
     return {"status": 200}, 200
 
@@ -196,12 +201,12 @@ def delete_ip_api(user, token, ip):
     except ValueError:
         return {"status": 400, "detail": "IP address is invalid"}, 400
 
-    ip_record = db.delete_ip_record(token, ip)
+    db.delete_ip_record(token, ip)
 
     return {"status": 200}, 200
 
 
-def put_ip_api(user, token, ip, value, incr=False, decr=False, ):
+def put_ip_api(user, token, ip, value, incr=False, decr=False):
     if db.dataset_exist(token) is False:
         return {"status": 404, "detail": "Dataset not found"}, 404
 
@@ -217,11 +222,11 @@ def put_ip_api(user, token, ip, value, incr=False, decr=False, ):
         return {"status": 400, "detail": "IP address or value is invalid"}, 400
 
     if incr is True:
-        dataset = db.update_ip_record(token, ip, value, update="incr")
+        db.update_ip_record(token, ip, value, update="incr")
     elif decr is True:
-        dataset = db.update_ip_record(token, ip, value, update="decr")
+        db.update_ip_record(token, ip, value, update="decr")
     else:
-        dataset = db.update_ip_record(token, ip, value, update="set")
+        db.update_ip_record(token, ip, value, update="set")
 
     return {"status": 200}, 200
 
@@ -263,7 +268,6 @@ def get_map_api(token, network, mask, resolution=None, skip_zeros=False, raw_dat
     hilbert_order = int((resolution - network.prefixlen) / 2)
     dataset = db.get_dataset(token, network, resolution)
     networks = dataset.get_networks(network, resolution)
-    logger.info("pripravuji hilbertovu mapu: {}".format(datetime.datetime.utcnow()))
 
     max_value = - math.inf
     min_value = math.inf
@@ -292,8 +296,8 @@ def get_map_api(token, network, mask, resolution=None, skip_zeros=False, raw_dat
     response["min_value"] = min_value if min_value != math.inf else 0.0
     response["hilbert_order"] = hilbert_order
 
-    logger.info("hotovo hilbertovu mapu: {}".format(datetime.datetime.utcnow()))
     return Response(json.dumps(response, separators=(',', ':')), status=200, mimetype='application/json')
+
 
 def get_user_info_api(user):
     user = db.find_user_by_uid(user)
