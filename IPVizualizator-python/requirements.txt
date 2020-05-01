@@ -1,3 +1,0 @@
-click
-connexion[swagger-ui]
-flask_cors
