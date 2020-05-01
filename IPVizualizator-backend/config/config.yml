@@ -1,0 +1,14 @@
+app:
+  api_file: "api/api.yml"
+  port: 8080
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  db: 0
+  data_prefix: "ipvizualizator"
+users:
+# UIDs of users described in this config must be less than 1000
+- uid: 1
+  username: "admin"
+  admin: true
+  authorization: "ce7f5abdf69365fcdd9703009e54d2de"

@@ -1,0 +1,624 @@
+---
+swagger: "2.0"
+
+info:
+  description: "REST API service for IPVizualizator module."
+  version: "1.0.0"
+  title: "IPVizualizator"
+  contact:
+    email: "jancijak@fit.cvut.cz"
+  license:
+    name: "Apache 2.0" 
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+
+basePath: "/api/v1"
+
+schemes:
+- "https"
+- "http"
+
+tags:
+- name: "Vizualizator"
+  description: "Add and update IP data"
+- name: "Map"
+  description: "Get map for given network"
+- name: "User"
+  description: "Operations with users"
+
+securityDefinitions:
+  APIKey:
+     type: "apiKey"
+     in: "header"
+     name: "Authorization"
+     x-apikeyInfoFunc: "IPVizualizator.apikey_auth"
+
+paths:
+  /vizualizator:
+    post:
+      tags: ["Vizualizator"]
+      summary: "Post IPs and their values for new dataset"
+      operationId: "IPVizualizator.create_new_dataset_api"
+      parameters:
+        - name: "records"
+          in: "body"
+          description: "IPs and their values"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/Token"
+        400:
+          description: "Invalid format"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      consumes:
+        - "text/plain"
+      produces:
+        - "application/json"
+      security:
+        - APIKey: []
+  /vizualizator/{token}:
+    get:
+      tags: ["Vizualizator"]
+      summary: "Get dataset metadata"
+      operationId: "IPVizualizator.get_dataset_metadata_api"
+      parameters:
+        - name: "token"
+          in: "path"
+          description: "Dataset token"
+          required: true
+          type: "string"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/Metadata"
+        404:
+          description: "Dataset token doesn't exist"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      produces:
+        - "application/json"
+      security:
+        - APIKey: []
+    put:
+      tags: ["Vizualizator"]
+      summary: "Update IPs and their values for existing dataset (delete all old records)"
+      operationId: "IPVizualizator.update_dataset_api"
+      parameters:
+      - name: "token"
+        in: "path"
+        description: "Dataset token"
+        required: true
+        type: "string"
+      - name: "records"
+        in: "body"
+        description: "IPs and their values"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        200:
+          description: "Successful operation"
+        400:
+          description: "Invalid format"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        404:
+          description: "Dataset token doesn't exist"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      consumes:
+       - "text/plain"
+      produces:
+      - "application/json"
+      security:
+      - APIKey: []
+    patch:
+      tags: ["Vizualizator"]
+      summary: "Update IPs and their values for existing dataset (preserve old records which haven't been updated)"
+      operationId: "IPVizualizator.patch_dataset_api"
+      parameters:
+      - name: "token"
+        in: "path"
+        description: "Dataset token"
+        required: true
+        type: "string"
+      - name: "records"
+        in: "body"
+        description: "IPs and their values"
+        required: true
+        schema:
+          type: "string"
+      - name: "incr"
+        in: "query"
+        description: "IP value will be incremented by this value"
+        type: "boolean"
+      - name: "decr"
+        in: "query"
+        description: "IP value will be decremented by this value"
+        type: "boolean"
+      responses:
+        200:
+          description: "Successful operation"
+        400:
+          description: "Invalid format"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        404:
+          description: "Dataset token doesn't exist"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      consumes:
+       - "text/plain"
+      produces:
+      - "application/json"
+      security:
+      - APIKey: []
+    delete:
+      tags: ["Vizualizator"]
+      summary: "Delete existing dataset"
+      operationId: "IPVizualizator.delete_dataset_api"
+      parameters:
+      - name: "token"
+        in: "path"
+        description: "Dataset token"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "Successful operation"
+        400:
+          description: "Invalid format"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        404:
+          description: "Dataset token doesn't exist"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      produces:
+      - "application/json"
+      security:
+      - APIKey: []
+  /vizualizator/{token}/ip/{ip}:
+    get:
+      tags: ["Vizualizator"]
+      summary: "Get value of IP for given dataset"
+      operationId: "IPVizualizator.get_ip_api"
+      parameters:
+      - name: "token"
+        in: "path"
+        description: "Dataset token"
+        required: true
+        type: "string"
+      - name: "ip"
+        in: "path"
+        description: "IP address"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/IP"
+        400:
+          description: "Invalid format of IP address"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        404:
+          description: "Dataset token doesn't exist"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      produces:
+      - "application/json"
+      security:
+      - APIKey: []
+    delete:
+      tags: ["Vizualizator"]
+      summary: "Delete IP from given dataset"
+      operationId: "IPVizualizator.delete_ip_api"
+      parameters:
+      - name: "token"
+        in: "path"
+        description: "Dataset token"
+        required: true
+        type: "string"
+      - name: "ip"
+        in: "path"
+        description: "IP address"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "Successful operation"
+        400:
+          description: "Invalid format of IP address"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        404:
+          description: "Dataset token doesn't exist"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      produces:
+      - "application/json"
+      security:
+      - APIKey: []
+    put:
+      tags: ["Vizualizator"]
+      summary: "Update IP and its value for existing dataset"
+      operationId: "IPVizualizator.put_ip_api"
+      parameters:
+      - name: "token"
+        in: "path"
+        description: "Dataset token"
+        required: true
+        type: "string"
+      - name: "ip"
+        in: "path"
+        description: "IP address"
+        required: true
+        type: "string"
+      - name: "value"
+        in: "body"
+        description: "Value"
+        required: true
+        schema:
+          type: "string"
+      - name: "incr"
+        in: "query"
+        description: "IP value will be incremented by this value"
+        type: "boolean"
+      - name: "decr"
+        in: "query"
+        description: "IP value will be decremented by this value"
+        type: "boolean"
+      responses:
+        200:
+          description: "Successful operation"
+        400:
+          description: "Invalid format"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        404:
+          description: "Dataset token doesn't exist"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      consumes:
+       - "text/plain"
+      produces:
+      - "application/json"
+      security:
+      - APIKey: []
+  /vizualizator/{token}/map/{network}/{mask}:
+    get:
+      tags: ["Map"]
+      summary: "Get pixels for given network and dataset token"
+      operationId: "IPVizualizator.get_map_api"
+      parameters:
+      - name: "token"
+        in: "path"
+        description: "Dataset token"
+        required: true
+        type: "string"
+      - name: "network"
+        in: "path"
+        description: "Network address"
+        required: true
+        type: "string"
+      - name: "mask"
+        in: "path"
+        description: "Network mask - must be even"
+        required: true
+        type: "string"
+      - name: "resolution"
+        in: "query"
+        description: "Network mask which represent 1px - need to be even - default value is given network mask+16"
+        type: "string"
+      - name: "skip_zeros"
+        in: "query"
+        description: "Skip pixels with zero value in response - it could significantly reduce response size"
+        type: "boolean"
+      - name: "raw_data"
+        in: "query"
+        description: "Don't compute x and y coordinates and IP string - leave it to a client"
+        type: "boolean"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/Map"
+        400:
+          description: "Invalid network address, mask or resolution"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        404:
+          description: "Dataset token doesn't exist"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      produces:
+      - "application/json"
+  /user:
+    get:
+      tags: ["User"]
+      summary: "Get information about authorized user"
+      operationId: "IPVizualizator.get_user_info_api"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/ResponseUser"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      produces:
+        - "application/json"
+      security:
+        - APIKey: []
+    post:
+      tags: ["User"]
+      summary: "Create new user"
+      operationId: "IPVizualizator.create_new_user_api"
+      parameters:
+      - name: "user"
+        in: "body"
+        description: "JSON with username of new user"
+        required: true
+        schema:
+          $ref: "#/definitions/User"
+      responses:
+        200:
+          description: "Successful operation"
+          schema:
+            $ref: "#/definitions/ResponseUser"
+        400:
+          description: "Invalid format"
+          schema:
+            $ref: "#/definitions/ResponseStatus"
+      consumes:
+       - "application/json"
+      produces:
+      - "application/json"
+    delete:
+      tags: ["User"]
+      summary: "Delete authorized user and owned dataset"
+      operationId: "IPVizualizator.delete_user_api"
+      responses:
+        200:
+          description: "Successful operation"
+        401:
+          $ref: '#/responses/UnauthorizedError'
+      produces:
+      - "application/json"
+      security:
+      - APIKey: []
+
+definitions:
+  IP:
+    type: "object"
+    required:
+      - "ip"
+      - "val"
+    properties:
+      ip:
+        type: "string"
+        description: "IP address"
+        example: "147.32.120.36"
+      val:
+        type: "number"
+        description: "Value"
+        example: 1
+  Vizualizator:
+    type: "object"
+    required:
+      - "ips"
+    properties:
+       ips:
+        type: "array"
+        items:
+          $ref: "#/definitions/IP"
+  ResponseStatus:
+    type: "object"
+    required:
+      - "status"
+    properties:
+      status:
+        type: "number"
+        description: "Status"
+        example: "400"
+      detail:
+        type: "string"
+        description: "Additional information"
+        example: "Invalid number"
+  Token:
+    type: "object"
+    required:
+      - "token"
+    properties:
+      token:
+        type: "string"
+        description: "Token identifying given records"
+        example: "UeU5mCtOA9zvYxch_S6Hog"
+      status:
+        type: "number"
+        description: "Status"
+        example: "200"
+  User:
+    type: "object"
+    required:
+      - "username"
+    properties:
+      username:
+        type: "string"
+        description: "Username"
+  ResponseUser:
+    type: "object"
+    required:
+      - "uid"
+      - "username"
+      - "authorization"
+      - "admin"
+    properties:
+      uid:
+        type: "number"
+        description: "User's UID"
+        example: "1001"
+      username:
+        type: "string"
+        description: "Username"
+        example: "Kocicka"
+      authorization:
+        type: "string"
+        description: "User's authorization token"
+        example: "a12d3dd304ff4323mmdbo665"
+      admin:
+        type: "boolean"
+        description: "Is user administrator?"
+        example: "false"
+      owned_datasets:
+        type: "array"
+        description: "Tokens of owned datasets"
+        items:
+          $ref: "#/definitions/Token"
+  Pixel:
+    type: "object"
+    required:
+      - "x"
+      - "y"
+      - "val"
+      - "ip"
+    properties:
+      x:
+        type: "number"
+        description: "X coordinates"
+        example: "1"
+      y:
+        type: "number"
+        description: "Y coordinates"
+        example: "1"
+      val:
+        type: "number"
+        description: "Value of ip network"
+        example: "5.0"
+      ip:
+        type: "string"
+        description: "IP network"
+        example: "147.32.0.0/24"
+  Metadata:
+    type: "object"
+    required:
+      - "token"
+      - "user"
+      - "size"
+      - "dataset_created"
+      - "dataset_updated"
+      - "dataset_viewed"
+    properties:
+      token:
+        type: "string"
+        description: "Dataset token"
+        example: "UeU5mCtOA9zvYxch_S6Hog"
+      user:
+        type: "object"
+        description: "Dataset owner"
+        $ref: "#/definitions/ResponseUser"
+      size:
+        type: "number"
+        description: "Number of IP addresses in dataset"
+        example: "976000"
+      dataset_created:
+        type: "number"
+        description: "UNIX timestamp when was dataset created"
+        example: "1587282815"
+      dataset_updated:
+        type: "number"
+        description: "UNIX timestamp when was at least one IP address in dataset updated"
+        example: "1587282900"
+      dataset_viewed:
+        type: "number"
+        description: "UNIX timestamp when someone generated map from dataset or viewed at least one IP address in dataset or manipulated with dataset"
+        example: "1587283000"
+  Map:
+    type: "object"
+    required:
+      - "pixels"
+      - "max_value"
+      - "min_value"
+      - "hilbert_order"
+      - "network"
+      - "mask"
+      - "prefix_length"
+      - "min_address"
+      - "max_address"
+      - "pixel_mask"
+    properties:
+      pixels:
+        type: "array"
+        items:
+          $ref: "#/definitions/Pixel"
+      max_value:
+        type: "number"
+        description: "Maximal value on this map"
+        example: "10.0"
+      min_value:
+        type: "number"
+        description: "Minimal value on this map"
+        example: "0.0"
+      hilbert_order:
+        type: "number"
+        description: "Hilbert order of this map"
+        example: "3"
+      network:
+        type: "string"
+        description: "Network depicted on this map"
+        example: "147.32.0.0"
+      mask:
+        type: "number"
+        description: "Network mask"
+        example: "16"
+      prefix_length:
+        type: "number"
+        description: "Network prefix length"
+        example: "16"
+      min_address:
+        type: "string"
+        description: "Minimal address of network (pixel) depicted on this map"
+        example: "147.32.0.1"
+      max_address:
+        type: "string"
+        description: "Maximal address of network (pixel) depicted on this map"
+        example: "147.32.255.255"
+      pixel_mask:
+        type: "number"
+        description: "Mask of network depicted as one pixel"
+        example: "24"
+
+responses:
+  UnauthorizedError:
+    description: "API key is missing, invalid or doesn't own requested resources"
+    headers:
+      WWW_Authenticate:
+        type: "string"
+
+externalDocs:
+  description: "Find out more about Swagger"
+  url: "http://swagger.io"

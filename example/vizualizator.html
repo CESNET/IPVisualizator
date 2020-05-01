@@ -7,74 +7,263 @@
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-    <link rel="stylesheet" href="../IPVizualizator-js/IPVizualizator.css">
 
     <title>IP Vizualizator</title>
   </head>
   <body>
     <div class="container" style="margin-top: 20px;">
         <center><h1 class="display-4">IP vizualizator</h1></center>
-        <form>
+        
+        <p class="pt-4">IPVizualizator je interaktivní mapa, která zobrazuje hodnoty přiřazené k IP adresám pomocí Hilbertovy křivky.</p>
+        <h5 class="pt-4">Postup zobrazení svých dat:</h5>
+        <ol>
+            <li><a href="create_user.html">Na této stránce</a> is vytvořte uživatele, pod kterým budete data nahrávat. Okopírujte si authorizační token.</li>
+            <li><a href="send_dataset.html">Zde</a> nahrajte váš dataset v požadovaném formátu. Uložte si token reprezentující daný dataset.</li>
+            <li>Pomocí formuláře níže si můžete generovat mapy.</li>
+        </ol>
+        <form class="pt-4 pl-4 pr-4 pb-4 card">
             <div class="form-group">
-                <label for="network">Network</label>
-                <input type="text" class="form-control" id="network" placeholder="0.0.0.0">
+                <label for="token">API server</label>
+                <input type="text" class="form-control" id="api" value="http://127.0.0.1:8080/api/v1/" readonly>
             </div>
             <div class="form-group">
-                <label for="mask">Mask</label>
-                <input type="number" class="form-control" id="mask" placeholder="0">
+                <label for="token">Token datasetu</label>
+                <input type="text" class="form-control" id="token" value="5ILUnBwe5rh5X1jnH3GBsw">
             </div>
             <div class="form-group">
-                <label for="resolution">Resolution</label>
-                <input type="number" class="form-control" id="resolution" placeholder="16">
-                <small id="res-help" class="form-text text-muted">Mask of the subnet which results in 1px - not mandatory</small>
+                <label for="network">Síť</label>
+                <input type="text" class="form-control" id="network" value="0.0.0.0">
+            </div>
+            <div class="form-group">
+                <label for="mask">Maska sítě</label>
+                <input type="number" class="form-control" id="mask" value="0">
+            </div>
+            <div class="form-group">
+                <label for="resolution">Rozlišení</label>
+                <input type="number" class="form-control" id="resolution" value="16">
+                <small id="res-help" class="form-text text-muted">Maska podsítě zobrazené sítě, která se na mapě zobrazí jako 1 pixel. Nepovinné</small>
 
             </div>
-            <div class="form-group form-check">
-                <input type="checkbox" class="form-check-input" id="test">
-                <label class="form-check-label" for="test">Random values for testing</label>
+            <h5 class="mt-4">Nepovinné parametry</h5>
+            <div class="form-row">
+                <div class="form-group col-sm-6">
+                    <label for="size">Rozměry mapy</label>
+                        <select class="form-control" id="size">
+                            <option value="small">small (512x512px)</option>
+                            <option value="regular" selected="selected">regular (768x768px)</option>
+                            <option value="large">large (1024x1024px)</option>
+                            <option value="xlarge">xlarge (4096x4096)</option>
+                        </select>
+                </div>
             </div>
-            <button type="button" id="form-send"  class="btn btn-primary">Show</button>
+            <div class="form-row" style="margin-left: 20px">
+                <div class="form-group form-check col-sm">
+                    <input type="checkbox" class="form-check-input" id="skip_zeros">
+                    <label class="form-check-label" for="skip_zeros">Neposílat pixely s nulovou hodnotou po síti</label>
+                </div>
+                <div class="form-group form-check col-sm ml-2">
+                    <input type="checkbox" class="form-check-input" id="static">
+                    <label class="form-check-label" for="static">Statická mapa - zakázat klikání</label>
+                </div>
+                <div class="form-group form-check col-sm">
+                    <input type="checkbox" class="form-check-input" id="bordered_pixels" checked>
+                    <label class="form-check-label" for="bordered_pixels">Zobrazovat mřížku</label>
+                </div>
+                <div class="form-group form-check col-sm">
+                    <input type="checkbox" class="form-check-input" id="show_overlay" checked>
+                    <label class="form-check-label" for="show_overlay">Zobrazovat překryvnou vrstvu</label>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-sm">
+                    <label for="map_opacity">Průhlednost mapy</label>
+                    <input type="number" class="form-control" id="map_opacity" min="0" max="1" step="0.05" value="1">
+                </div>
+                <div class="form-group col-sm">
+                    <label for="overlay_opacity">Průhlednost překryvu</label>
+                    <input type="number" class="form-control" id="overlay_opacity" min="0" max="1" step="0.05" value="1">
+                </div>
+                <div class="form-group col-sm">
+                    <label for="zoom_opacity">Průhlednost zoomu</label>
+                    <input type="number" class="form-control" id="zoom_opacity" min="0" max="1" step="0.05" value="1">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-sm">
+                    <label for="zoom_color">Barva zoomu</label>
+                    <input type="text" class="form-control" id="zoom_color" value="#ff0000">
+                </div>
+                <div class="form-group col-sm">
+                    <label for="overlay_color">Barva překryvu</label>
+                    <input type="text" class="form-control" id="overlay_color" value="#ffff00">
+                </div>
+                <div class="form-group col-sm">
+                    <label for="size">Pozice textu překryvu</label>
+                    <select class="form-control" id="overlay_text_position">
+                        <option value="inside" selected="selected">Vevnitř</option>
+                        <option value="outside">Vně</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-sm">
+                    <label for="zoom_mask">Maska zoomu</label>
+                    <input type="number" class="form-control" id="zoom_mask" min="2" max="32" step="2" value="8">
+                </div>
+                <div class="form-group col-sm">
+                    <label for="zoom_thickness">Šířka linky zoomu</label>
+                    <input type="number" class="form-control" id="zoom_thickness" min="1" max="10" step="2" value="1">
+                </div>
+                <div class="form-group col-sm">
+                    <label for="overlay_thickness">Šířka linky překryvu</label>
+                    <input type="number" class="form-control" id="overlay_thickness" min="1" max="10" step="1" value="1">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="overlay_subnets">Zvýrazněné sítě</label>
+                <textarea type="text" class="form-control" id="overlay_subnets" rows=15>[
+  {
+   "text": "Reserved",
+   "network": "0.0.0.0/8"
+  },
+  {
+   "text": "Unallocated",
+   "network": "1.0.0.0/8"
+  },
+  {
+   "text": "Public\nData Network",
+   "network": "14.0.0.0/8"
+  },
+  {
+   "text": "GE",
+   "network": "3.0.0.0/8"
+  },
+  {
+   "text": "Unallocated",
+   "network": "2.0.0.0/8"
+  },
+  {
+   "text": "Xerox",
+   "network": "13.0.0.0/8"
+  },
+  {
+   "text": "RIPE",
+   "network": "80.0.0.0/4"
+  },
+  {
+   "text": "Multicast",
+   "network": "224.0.0.0/4"
+  },
+  {
+   "text": "Reserved",
+   "network": "240.0.0.0/4"
+  }
+ ]
+                </textarea>
+            </div>
+            <button type="button" id="form-send"  class="btn btn-primary">Zobrazit</button>
         </form>
-        <div id="canvas"></div>
-        <div id="tooltip"></div>
+        <div class="mt-4 mb-4">
+            <div id="vizualizator"></div>
+        </div>
+
+        <div id="map_insert">
+            <h5 class="pt-4">Vložení mapy na vlastní stránku:</h5>
+            <ol>
+                <li>Přidejte na stránku CSS styl:</li>
+                <pre><code>&lt;link rel=&quot;stylesheet&quot; href=&quot;https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css&quot;&gt;</code></pre>
+
+                <li>Pridejte na stránku následující javascriptové knihovny:</li>
+                <pre>
+                    <code>
+                        &nbsp;&lt;script src=&quot;https://code.jquery.com/jquery-3.4.1.min.js&quot;&gt;&lt;/script&gt;
+                        &nbsp;&lt;script src=&quot;https://d3js.org/d3.v5.min.js&quot;&gt;&lt;/script&gt;
+                        &nbsp;&lt;script src=&quot;https://d3js.org/d3-scale-chromatic.v1.min.js&quot;&gt;&lt;/script&gt;
+                        &nbsp;&lt;script src=&quot;http://127.0.0.1/ipvizualizator.js&quot;&gt;&lt;/script&gt;
+                    </code>
+                </pre>
+
+                <li>Vložte mapu pomocí kódu:</li>
+                <pre class="pre-scrollable">
+                    <code id="code">
+                    </code>
+                </pre>
+            </ol>
+        </div>
     </div>
 
-
-    <!-- Optional JavaScript -->
-    <!-- jQuery first, then Popper.js, Bootstrap JS, D3.js -->
-    <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <!-- jQuery first, Bootstrap JS, D3.js -->
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://d3js.org/d3.v5.min.js"></script>
     <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
-    <script src="../IPVizualizator-js/IPVizualizator.js"></script>
-    <script> 
-        const vizualizator = new IPVizualizator({
-            "canvas": "#canvas",
-            "height": "800",
-            "width": "800",
-            "api": "http://127.0.0.1:8080/api/v1",
-            "network": "147.32.0.0",
-            "mask": 16,
-            "resolution": 24,
-            "test_mode": false,
-            "bordered_pixel": true
-        });
-
+    <script src="../IPVizualizator-js/ipvizualizator.js"></script>
+    <script>
+        $('#map_insert').hide();
         $(document).ready(function(){
             $("#form-send").click(function(){
-                network = $("#network").val(); 
-                mask = $("#mask").val(); 
-                resolution = $("#resolution").val();
-                testing = false;
-                if($("#test").is(":checked")) testing = true;
+                const api = $("#api").val();
+                const token = $("#token").val();
+                const network = $("#network").val();
+                const mask = parseInt($("#mask").val());
+                const resolution = parseInt($("#resolution").val());
+                const size = $("#size").val();
+                const static_map = $("#static").prop("checked");
+                const skip_zeros = $("#skip_zeros").prop("checked");
+                const bordered_pixels = $("#bordered_pixels").prop("checked");
+                const show_overlay = $("#show_overlay").prop("checked");
+                const zoom_mask = parseInt($("#zoom_mask").val());
+                const map_opacity = parseFloat($("#map_opacity").val());
+                const overlay_opacity = parseFloat($("#overlay_opacity").val());
+                const zoom_opacity = parseFloat($("#zoom_opacity").val());
+                const zoom_thickness = parseInt($("#zoom_thickness").val());
+                const overlay_thickness = parseInt($("#overlay_thickness").val());
+                const overlay_color = $("#overlay_color").val();
+                const zoom_color = $("#zoom_color").val();
+                const overlay_text_position = $("#overlay_text_position").val();
+                const overlay_subnets = JSON.parse($("#overlay_subnets").val());
 
-                vizualizator.set_network(network);
-                vizualizator.set_mask(mask);
-                vizualizator.set_resolution(resolution);
-                vizualizator.set_test_mode(testing);
-                vizualizator.update();
-            }); 
+
+                $('#vizualizator').empty();
+
+                const parameters = {
+                    "id": "#vizualizator",
+                    "api": api,
+                    "token": token,
+                    "network": network,
+                    "mask": mask,
+                    "resolution": resolution,
+                    "config": {
+                        "size": size,
+                        "skip_zeros": skip_zeros,
+                        "bordered_pixel": bordered_pixels,
+                        "static": static_map,
+                        "show_overlay": show_overlay,
+                        "zoom_mask": zoom_mask,
+                        "map_opacity": map_opacity,
+                        "overlay_opacity": overlay_opacity,
+                        "zoom_opacity": zoom_opacity,
+                        "zoom_thickness": zoom_thickness,
+                        "overlay_thickness": overlay_thickness,
+                        "overlay_color": overlay_color,
+                        "zoom_color": zoom_color,
+                        "overlay_text_position": overlay_text_position
+                    },
+                    "overlay_networks": overlay_subnets
+                }
+
+                const vizualizator = new IPVizualizator(parameters);
+
+                $('#map_insert').show();
+
+                $('#code').html(
+                    '&lt;div id=&quot;vizualizator&quot;&gt;&lt;/div&gt;\n' +
+                    '&lt;script&gt;\n' +
+                    '   const vizualizator = new IPVizualizator(\n' +
+                    JSON.stringify(parameters, null, ' ') +
+                    ');\n' +
+                    '&lt;/script&gt;'
+                );
+            });
         }); 
     </script>
   </body>
