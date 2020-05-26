@@ -106,12 +106,9 @@ def get_dataset_metadata_api(user, token):
 
 
 def update_dataset_api(user, token, records):
-    if db.dataset_exist(token) is False:
-        return {"status": 404, "detail": "Dataset not found"}, 404
-
     user = db.find_user_by_uid(user)
 
-    if db.user_permission(user, token) is False:
+    if db.user_permission(user, token) is False and db.dataset_exist(token) is True :
         return {"status": 401, "detail": "User doesn't have a permission to manipulate with this dataset"}, 401
 
     try:
@@ -122,18 +119,18 @@ def update_dataset_api(user, token, records):
     if len(records) == 0:
         return {"status": 400, "detail": "No data provided."}, 400
 
-    db.update_dataset(token, records, update="set")
+    if db.dataset_exist(token) is False:
+        db.create_dataset(records, user, token)
+    else:
+        db.update_dataset(token, records, update="set")
 
     return {"status": 200}, 200
 
 
 def patch_dataset_api(user, token, records, incr=False, decr=False):
-    if db.dataset_exist(token) is False:
-        return {"status": 404, "detail": "Dataset not found"}, 404
-
     user = db.find_user_by_uid(user)
 
-    if db.user_permission(user, token) is False:
+    if db.user_permission(user, token) is False and db.dataset_exist(token) is True :
         return {"status": 401, "detail": "User doesn't have a permission to manipulate with this dataset"}, 401
 
     try:
@@ -144,12 +141,15 @@ def patch_dataset_api(user, token, records, incr=False, decr=False):
     if len(records) == 0:
         return {"status": 400, "detail": "No data provided."}, 400
 
-    if incr is True:
-        db.update_dataset(token, records, update="incr")
-    elif decr is True:
-        db.update_dataset(token, records, update="decr")
+    if db.dataset_exist(token) is False:
+        db.create_dataset(records, user, token)
     else:
-        db.update_dataset(token, records, update="patch")
+        if incr is True:
+            db.update_dataset(token, records, update="incr")
+        elif decr is True:
+            db.update_dataset(token, records, update="decr")
+        else:
+            db.update_dataset(token, records, update="patch")
 
     return {"status": 200}, 200
 

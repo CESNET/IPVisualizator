@@ -252,10 +252,11 @@ class RedisDB:
         for i in range(0, len(data), size):
             yield {k: data[k] for k in islice(it, size)}
 
-    def create_dataset(self, ips, user):
-        token = secrets.token_urlsafe(nbytes=16)
-        while self.db.sismember(self.dataset_key, token):
+    def create_dataset(self, ips, user, token=None):
+        if token is None:
             token = secrets.token_urlsafe(nbytes=16)
+            while self.db.sismember(self.dataset_key, token):
+                token = secrets.token_urlsafe(nbytes=16)
 
         dataset_cache = {}
         dataset_subnets = []

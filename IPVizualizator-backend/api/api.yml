@@ -111,10 +111,6 @@ paths:
           description: "Invalid format"
           schema:
             $ref: "#/definitions/ResponseStatus"
-        404:
-          description: "Dataset token doesn't exist"
-          schema:
-            $ref: "#/definitions/ResponseStatus"
         401:
           $ref: '#/responses/UnauthorizedError'
       consumes:
@@ -152,10 +148,6 @@ paths:
           description: "Successful operation"
         400:
           description: "Invalid format"
-          schema:
-            $ref: "#/definitions/ResponseStatus"
-        404:
-          description: "Dataset token doesn't exist"
           schema:
             $ref: "#/definitions/ResponseStatus"
         401:
