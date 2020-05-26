@@ -1,0 +1,25 @@
+version: '3'
+services:
+  api:
+    build: .
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - redis 
+  redis:
+    image: "redis:alpine"
+    restart: always
+    expose:
+      - "6379"
+    volumes:
+      - "./redis-data:/data"
+  data_sidecar:
+    image: "willfarrell/crontab"
+    restart: always
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./cron.json:/opt/crontab/config.json:rw"
+    depends_on:
+      - redis
+      - api 
