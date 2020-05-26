@@ -14,12 +14,3 @@ services:
       - "6379"
     volumes:
       - "./redis-data:/data"
-  data_sidecar:
-    image: "willfarrell/crontab"
-    restart: always
-    volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "./cron.json:/opt/crontab/config.json:rw"
-    depends_on:
-      - redis
-      - api 
