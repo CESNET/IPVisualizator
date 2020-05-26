@@ -3,6 +3,7 @@ IPVizualizator
 
 IPVizualizator je nástroj pro tvorbu interaktivních vizualizací, které zobrazují IPv4 adresní prostor a hodnoty přiřazené k IP adresám, pomocí Hilbertovy křivky.
 
+![Vizualizace](./ipvizualizator.png)
 
 Proč Hilbertova křivka?
 ======================
@@ -28,5 +29,5 @@ Velmi krátký návod k použití pro testovací účely
 - Naklonujte si tento repositář
 - Proveďte v repositáři příkaz  `docker-compose build`
 - Proveďte v repositáři příkaz  `docker-compose up`
-- Dojde ke spuštění API rozhraní, které je defaultně dostupné na _127.0.0.1:8080_ . Vizuální rozhraní API běží na adrese _http://127.0.0.1:8080/api/v1/ui/_ - rozhranní slouží také jako dokumentace API.
-- Pro tvorbu vizualizací je možné použít HTML stránku ***IPVizualizator-webservice/index.html***.
+- Dojde ke spuštění API rozhraní, které je defaultně dostupné na _127.0.0.1:8080/api/v1/_ . Vizuální rozhraní API běží na adrese _http://127.0.0.1:8080/api/v1/ui/_ - rozhraní slouží také jako dokumentace API.
+- Pro tvorbu vizualizací je možné použít tuto [HTML stránku](./IPVizualizator-webservice/index.html).
