@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <title>NERD map</title>
+  </head>
+  <body>
+
+    <div id="vizualizator"></div>
+
+    <!-- jQuery first, Bootstrap JS, D3.js -->
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+    <script src="../IPVizualizator-js/ipvizualizator.js"></script>
+    <script>
+        $(document).ready(function(){
+            const vizualizator = new IPVizualizator(
+            {
+                 "id": "#vizualizator",
+                 "api": "http://ipvizualizator.sh.cvut.cz:8080/api/v1/",
+                 "token": "pOvHkZszgti5zwTrlloR4Q",
+                 "network": "0.0.0.0",
+                 "mask": 0,
+                 "resolution": 16,
+                 "config": {
+                  "size": "regular",
+                  "skip_zeros": false,
+                  "bordered_pixel": true,
+                  "static": false,
+                  "show_overlay": true,
+                  "zoom_mask": 8,
+                  "map_opacity": 1,
+                  "overlay_opacity": 1,
+                  "zoom_opacity": 1,
+                  "zoom_thickness": 1,
+                  "overlay_thickness": 1,
+                  "overlay_color": "#ffff00",
+                  "zoom_color": "#ff0000",
+                  "overlay_text_position": "inside"
+                 },
+                 "overlay_networks": [
+                  {
+                   "text": "Multicast",
+                   "network": "224.0.0.0/4"
+                  },
+                  {
+                   "text": "Reserved",
+                   "network": "240.0.0.0/4"
+                  }
+                 ]
+            });
+        }); 
+    </script>
+  </body>
+</html>
