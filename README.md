@@ -1,6 +1,8 @@
 IPVizualizator
 ==============
 
+> Forked from diploma thesis of @jakubjancicka. The original repository is [here](https://gitlab.fit.cvut.cz/jancijak/ipvizualizator/blob/master/IPVizualizator-js/ipvizualizator.js).
+
 IPVizualizator je nástroj pro tvorbu interaktivních vizualizací, které zobrazují IPv4 adresní prostor a hodnoty přiřazené k IP adresám, pomocí Hilbertovy křivky.
 
 ![Vizualizace](./ipvizualizator.png)
