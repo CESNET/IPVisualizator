@@ -149,9 +149,9 @@ class Dataset:
 
 
 class RedisDB:
-    def __init__(self, host="127.0.0.1", port=6379, db=0, data_prefix="ipvizualizator", initial_users=[]):
+    def __init__(self, host="127.0.0.1", port=6379, db=0, data_prefix="ipvisualizator", initial_users=[]):
         self.prefix = data_prefix
-        self.logger = logging.getLogger("IPVizualizator")
+        self.logger = logging.getLogger("IPVisualizator")
         self.db = redis.Redis(host=host, port=port, db=db)
 
         # keys and prefixes in redis database

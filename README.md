@@ -1,11 +1,11 @@
-IPVizualizator
+IPVisualizator
 ==============
 
 > Forked from diploma thesis of @jakubjancicka. The original repository is [here](https://gitlab.fit.cvut.cz/jancijak/ipvizualizator/blob/master/IPVizualizator-js/ipvizualizator.js).
 
-IPVizualizator je nástroj pro tvorbu interaktivních vizualizací, které zobrazují IPv4 adresní prostor a hodnoty přiřazené k IP adresám, pomocí Hilbertovy křivky.
+IPVisualizator je nástroj pro tvorbu interaktivních vizualizací, které zobrazují IPv4 adresní prostor a hodnoty přiřazené k IP adresám, pomocí Hilbertovy křivky.
 
-![Vizualizace](./ipvizualizator.png)
+![Vizualizace](./ipvisualizator.png)
 
 Proč Hilbertova křivka?
 ======================
@@ -18,9 +18,9 @@ Vizualizace pomocí Hilbertovy křivky může pomoci bezpečnostním týmům s r
 
 Obsah repozitáře
 ===============
-- ***IPVizualizator-backend*** - Adresář se zdrojovými kódy serverové části aplikace
-- ***IPVizualizator-js*** - Adresář se zdrojovými kódy klientské části aplikace
-- ***IPVizualizator-webservice*** - Adresář s ukázkou integrace aplikace do webové stránky
+- ***IPVisualizator-backend*** - Adresář se zdrojovými kódy serverové části aplikace
+- ***IPVisualizator-js*** - Adresář se zdrojovými kódy klientské části aplikace
+- ***IPVisualizator-webservice*** - Adresář s ukázkou integrace aplikace do webové stránky
 - ***Dockerfile*** - Dockerfile na vytvoření kontejneru s serverovou částí aplikace
 - ***docker-compose.yml*** - Docker compose spustí serverovou část aplikace i s databází Redis
 - ***uvodni_text.pdf*** - Úvodní text, který sloužil jako příprava k diplomové práci autora aplikace
@@ -32,4 +32,4 @@ Velmi krátký návod k použití pro testovací účely
 - Proveďte v repositáři příkaz  `docker-compose build`
 - Proveďte v repositáři příkaz  `docker-compose up`
 - Dojde ke spuštění API rozhraní, které je defaultně dostupné na _127.0.0.1:8080/api/v1/_ . Vizuální rozhraní API běží na adrese _http://127.0.0.1:8080/api/v1/ui/_ - rozhraní slouží také jako dokumentace API.
-- Pro tvorbu vizualizací je možné použít tuto [HTML stránku](./IPVizualizator-webservice/index.html).
+- Pro tvorbu vizualizací je možné použít tuto [HTML stránku](./IPVisualizator-webservice/index.html).

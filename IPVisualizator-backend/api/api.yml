@@ -2,9 +2,9 @@
 swagger: "2.0"
 
 info:
-  description: "REST API service for IPVizualizator module."
+  description: "REST API service for IPVisualizator module."
   version: "1.0.0"
-  title: "IPVizualizator"
+  title: "IPVisualizator"
   contact:
     email: "jancijak@fit.cvut.cz"
   license:
@@ -30,14 +30,14 @@ securityDefinitions:
      type: "apiKey"
      in: "header"
      name: "Authorization"
-     x-apikeyInfoFunc: "IPVizualizator.apikey_auth"
+     x-apikeyInfoFunc: "IPVisualizator.apikey_auth"
 
 paths:
   /vizualizator:
     post:
       tags: ["Vizualizator"]
       summary: "Post IPs and their values for new dataset"
-      operationId: "IPVizualizator.create_new_dataset_api"
+      operationId: "IPVisualizator.create_new_dataset_api"
       parameters:
         - name: "records"
           in: "body"
@@ -66,7 +66,7 @@ paths:
     get:
       tags: ["Vizualizator"]
       summary: "Get dataset metadata"
-      operationId: "IPVizualizator.get_dataset_metadata_api"
+      operationId: "IPVisualizator.get_dataset_metadata_api"
       parameters:
         - name: "token"
           in: "path"
@@ -91,7 +91,7 @@ paths:
     put:
       tags: ["Vizualizator"]
       summary: "Update IPs and their values for existing dataset (delete all old records)"
-      operationId: "IPVizualizator.update_dataset_api"
+      operationId: "IPVisualizator.update_dataset_api"
       parameters:
       - name: "token"
         in: "path"
@@ -122,7 +122,7 @@ paths:
     patch:
       tags: ["Vizualizator"]
       summary: "Update IPs and their values for existing dataset (preserve old records which haven't been updated)"
-      operationId: "IPVizualizator.patch_dataset_api"
+      operationId: "IPVisualizator.patch_dataset_api"
       parameters:
       - name: "token"
         in: "path"
@@ -161,7 +161,7 @@ paths:
     delete:
       tags: ["Vizualizator"]
       summary: "Delete existing dataset"
-      operationId: "IPVizualizator.delete_dataset_api"
+      operationId: "IPVisualizator.delete_dataset_api"
       parameters:
       - name: "token"
         in: "path"
@@ -189,7 +189,7 @@ paths:
     get:
       tags: ["Vizualizator"]
       summary: "Get value of IP for given dataset"
-      operationId: "IPVizualizator.get_ip_api"
+      operationId: "IPVisualizator.get_ip_api"
       parameters:
       - name: "token"
         in: "path"
@@ -223,7 +223,7 @@ paths:
     delete:
       tags: ["Vizualizator"]
       summary: "Delete IP from given dataset"
-      operationId: "IPVizualizator.delete_ip_api"
+      operationId: "IPVisualizator.delete_ip_api"
       parameters:
       - name: "token"
         in: "path"
@@ -255,7 +255,7 @@ paths:
     put:
       tags: ["Vizualizator"]
       summary: "Update IP and its value for existing dataset"
-      operationId: "IPVizualizator.put_ip_api"
+      operationId: "IPVisualizator.put_ip_api"
       parameters:
       - name: "token"
         in: "path"
@@ -304,7 +304,7 @@ paths:
     get:
       tags: ["Map"]
       summary: "Get pixels for given network and dataset token"
-      operationId: "IPVizualizator.get_map_api"
+      operationId: "IPVisualizator.get_map_api"
       parameters:
       - name: "token"
         in: "path"
@@ -354,7 +354,7 @@ paths:
     get:
       tags: ["User"]
       summary: "Get information about authorized user"
-      operationId: "IPVizualizator.get_user_info_api"
+      operationId: "IPVisualizator.get_user_info_api"
       responses:
         200:
           description: "Successful operation"
@@ -369,7 +369,7 @@ paths:
     post:
       tags: ["User"]
       summary: "Create new user"
-      operationId: "IPVizualizator.create_new_user_api"
+      operationId: "IPVisualizator.create_new_user_api"
       parameters:
       - name: "user"
         in: "body"
@@ -393,7 +393,7 @@ paths:
     delete:
       tags: ["User"]
       summary: "Delete authorized user and owned dataset"
-      operationId: "IPVizualizator.delete_user_api"
+      operationId: "IPVisualizator.delete_user_api"
       responses:
         200:
           description: "Successful operation"

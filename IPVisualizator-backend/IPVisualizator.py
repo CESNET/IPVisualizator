@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """
-IPVizualizator API Backend v0.9
+IPVisualizator API Backend v0.9
 
 Copyright (c) 2020 Jakub Jancicka <jancijak@fit.cvut.cz>
 Released under Apache license v2.0
@@ -328,10 +328,10 @@ def apikey_auth(token, required_scopes):
 
 
 #################################
-# Setup IPVizualizator application 
+# Setup IPVisualizator application 
 
 # Setup logger
-logger = logging.getLogger("IPVizualizator")
+logger = logging.getLogger("IPVisualizator")
 logger.setLevel(logging.INFO)
 h = logging.StreamHandler()
 h.setLevel(logging.INFO)
@@ -360,7 +360,7 @@ app = connexion.App(__name__)
 CORS(app.app)
 API_FILE = CONFIG.get("app", {}).get("api_file", "api/api.yml")
 try:
-    app.add_api(API_FILE, arguments={"title": "IPVizualizator"})
+    app.add_api(API_FILE, arguments={"title": "IPVisualizator"})
 except FileNotFoundError:
     logger.critical("API file '{}' is not found.".format(API_FILE))
     sys.exit(1)
@@ -373,7 +373,7 @@ except PermissionError:
 redis_host = CONFIG.get("redis", {}).get("host", "127.0.0.1")
 redis_port = CONFIG.get("redis", {}).get("port", 6379)
 redis_db = CONFIG.get("redis", {}).get("db", 0)
-redis_prefix = CONFIG.get("redis", {}).get("data_prefix", "ipvizualizator")
+redis_prefix = CONFIG.get("redis", {}).get("data_prefix", "ipvisualizator")
 initial_users = CONFIG.get("users", [])
 
 try:
