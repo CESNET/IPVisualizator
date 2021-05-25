@@ -224,7 +224,7 @@ class IPVisualizator {
     // ------- Data binding --------
 
     create_api_call_url() {
-        return this.api + "/vizualizator/" + this.token +
+        return this.api + "/visualizator/" + this.token +
                           "/map/" + this.network +
                           "/" + this.mask +
                           "?resolution=" + (this.mask + this.resolution) +

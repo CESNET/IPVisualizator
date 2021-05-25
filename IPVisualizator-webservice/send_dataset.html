@@ -17,7 +17,7 @@
         <p class="pt-4">Pomocí formuláře níže můžete nahrát data. K tomu potřebujete autorizační token, který získáte <a href="create_user.html">zde</a>.</p>
         <p>Data si můžete zobrazit <a href="index.html">zde</a>.</p>
         <p>Pro větší objemy dat je vhodné využít příkaz curl:</p>
-	    <p class="text-monospace">curl -X POST --header 'Content-Type: text/plain' --header 'Accept: application/json'  --header 'Authorization: {token}' -d "@./data.csv" 'http://127.0.0.1:8080/api/v1/vizualizator'</p>
+	    <p class="text-monospace">curl -X POST --header 'Content-Type: text/plain' --header 'Accept: application/json'  --header 'Authorization: {token}' -d "@./data.csv" 'http://127.0.0.1:8080/api/v1/visualizator'</p>
         <form class="pt-4 pb-4">
             <div class="form-group">
                 <label for="token">Autorizační token</label>
@@ -54,7 +54,7 @@
                 data = $("#data").val();
                 token = $("#token").val();
                 
-                api_call_url = "http://127.0.0.1:8080/api/v1/vizualizator";
+                api_call_url = "http://127.0.0.1:8080/api/v1/visualizator";
  
                 $.ajax
                 ({

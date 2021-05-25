@@ -164,7 +164,7 @@
             <button type="button" id="form-send"  class="btn btn-primary">Zobrazit</button>
         </form>
         <div class="mt-4 mb-4">
-            <div id="vizualizator"></div>
+            <div id="visualizator"></div>
         </div>
 
         <div id="map_insert" class="card pt-4 pl-4 pr-4 pb-4">
@@ -226,10 +226,10 @@
                 const overlay_subnets = JSON.parse($("#overlay_subnets").val());
 
 
-                $('#vizualizator').empty();
+                $('#visualizator').empty();
 
                 const parameters = {
-                    "id": "#vizualizator",
+                    "id": "#visualizator",
                     "api": api,
                     "token": token,
                     "network": network,
@@ -254,14 +254,14 @@
                     "overlay_networks": overlay_subnets
                 }
 
-                const vizualizator = new IPVisualizator(parameters);
+                const visualizator = new IPVisualizator(parameters);
 
                 $('#map_insert').show();
 
                 $('#code').html(
-                    '&lt;div id=&quot;vizualizator&quot;&gt;&lt;/div&gt;\n' +
+                    '&lt;div id=&quot;visualizator&quot;&gt;&lt;/div&gt;\n' +
                     '&lt;script&gt;\n' +
-                    '   const vizualizator = new IPVisualizator(\n' +
+                    '   const visualizator = new IPVisualizator(\n' +
                     JSON.stringify(parameters, null, ' ') +
                     ');\n' +
                     '&lt;/script&gt;'
