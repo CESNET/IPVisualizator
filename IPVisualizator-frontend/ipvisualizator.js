@@ -70,6 +70,7 @@ class IPVisualizator {
         this.network_history = [];
         this.zoomed_subnet = null;
         this.next_color = 1;
+        this.rotation = [0, 0];
 
         // Pixels and network_data hold data sent from server
         this.pixels = {};
@@ -129,6 +130,24 @@ class IPVisualizator {
         return [true, ip, mask];
     }
 
+    calculate_rotation() {
+        var network = this.convert_ip_from_string(this.network);
+        var major_diagonal = 0;
+        var sub_diagonal = 0;
+    
+        for(var i = 30; i >= 32-this.mask; i -= 2){
+            var position = ((network & (3 << i)) >> i) & 3;
+            if(position == 0){
+                sub_diagonal += 1;
+            }
+            else if(position == 3){
+                major_diagonal += 1;
+            }
+        }
+
+        this.rotation = [major_diagonal%2, sub_diagonal%2];
+    }
+
     hilbert_i_to_xy(index, order) {
         var state = 0;
         var x = 0;
@@ -139,6 +158,14 @@ class IPVisualizator {
             x = (x << 1) | ((0x936C >> row) & 1);
             y = (y << 1) | ((0x39C6 >> row) & 1);
             state = (0x3E6B94C1 >> 2 * row) & 3;
+        }
+
+        if(this.rotation[1] == 1){
+            [x,y] = [y,x];
+        }
+        if(this.rotation[0] == 1){
+            var size = Math.pow(2, order);
+            [x,y] = [size-y-1,size-x-1];
         }
 
         return [x, y];
@@ -241,6 +268,7 @@ class IPVisualizator {
         // Get data from server
         $.get(api_call_url, data => {
             this.network_data = data;
+            this.calculate_rotation();
             this.databind();
             this.draw(false);
             this.draw(true);
@@ -601,7 +629,7 @@ class IPVisualizator {
         // Network header for showing network address of displayed map
         this.network_heading = header_row
             .append("div")
-            .classed("network-heading col align-middle text-center", true)
+            .classed("nnetwork-headingetwork-heading col align-middle text-center", true)
             .style("font-size", "20px");
 
         // Right menu with config and screenshot button
