@@ -629,7 +629,7 @@ class IPVisualizator {
         // Network header for showing network address of displayed map
         this.network_heading = header_row
             .append("div")
-            .classed("nnetwork-headingetwork-heading col align-middle text-center", true)
+            .classed("network-heading col align-middle text-center", true)
             .style("font-size", "20px");
 
         // Right menu with config and screenshot button
