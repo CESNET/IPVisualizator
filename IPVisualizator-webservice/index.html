@@ -8,13 +8,13 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 
-    <title>IPVizualizator</title>
+    <title>IPVisualizator</title>
   </head>
   <body>
     <div class="container" style="margin-top: 20px;">
-        <center><h1 class="display-4">IPvizualizator</h1></center>
+        <center><h1 class="display-4">IPvisualizator</h1></center>
         
-        <p class="pt-4">IPVizualizator je služba generující interaktivní mapy IP rozsahů pomocí Hilbertovy křivky. Zobrazená data se skládají z dvojic "IP adresa : hodnota".</p>
+        <p class="pt-4">IPVisualizator je služba generující interaktivní mapy IP rozsahů pomocí Hilbertovy křivky. Zobrazená data se skládají z dvojic "IP adresa : hodnota".</p>
         <h5 class="pt-4">Postup zobrazení svých dat:</h5>
         <ol>
             <li><a href="create_user.html">Na této stránce</a> is vytvořte uživatele, pod kterým budete data nahrávat. Okopírujte si authorizační token.</li>
@@ -164,7 +164,7 @@
             <button type="button" id="form-send"  class="btn btn-primary">Zobrazit</button>
         </form>
         <div class="mt-4 mb-4">
-            <div id="vizualizator"></div>
+            <div id="visualizator"></div>
         </div>
 
         <div id="map_insert" class="card pt-4 pl-4 pr-4 pb-4">
@@ -179,7 +179,7 @@
 &nbsp;&lt;script src=&quot;https://code.jquery.com/jquery-3.4.1.min.js&quot;&gt;&lt;/script&gt;
 &nbsp;&lt;script src=&quot;https://d3js.org/d3.v5.min.js&quot;&gt;&lt;/script&gt;
 &nbsp;&lt;script src=&quot;https://d3js.org/d3-scale-chromatic.v1.min.js&quot;&gt;&lt;/script&gt;
-&nbsp;&lt;script src=&quot;http://127.0.0.1/ipvizualizator.js&quot;&gt;&lt;/script&gt;
+&nbsp;&lt;script src=&quot;http://127.0.0.1/ipvisualizator.js&quot;&gt;&lt;/script&gt;
                     </code>
                 </pre>
 
@@ -191,7 +191,7 @@
             </ol>
         </div>
         <div class="text-center py-3">© 2020 Jakub Jančička :
-        <a href="https://gitlab.fit.cvut.cz/jancijak/ipvizualizator">IPVizualizator na Gitlabu</a>
+        <a href="https://gitlab.fit.cvut.cz/jancijak/ipvizualizator">IPVisualizator na Gitlabu</a>
         </div>
     </div>
 
@@ -199,7 +199,7 @@
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://d3js.org/d3.v5.min.js"></script>
     <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
-    <script src="../IPVizualizator-js/ipvizualizator.js"></script>
+    <script src="../IPVisualizator-frontend/ipvisualizator.js"></script>
     <script>
         $('#map_insert').hide();
         $(document).ready(function(){
@@ -226,10 +226,10 @@
                 const overlay_subnets = JSON.parse($("#overlay_subnets").val());
 
 
-                $('#vizualizator').empty();
+                $('#visualizator').empty();
 
                 const parameters = {
-                    "id": "#vizualizator",
+                    "id": "#visualizator",
                     "api": api,
                     "token": token,
                     "network": network,
@@ -254,14 +254,14 @@
                     "overlay_networks": overlay_subnets
                 }
 
-                const vizualizator = new IPVizualizator(parameters);
+                const visualizator = new IPVisualizator(parameters);
 
                 $('#map_insert').show();
 
                 $('#code').html(
-                    '&lt;div id=&quot;vizualizator&quot;&gt;&lt;/div&gt;\n' +
+                    '&lt;div id=&quot;visualizator&quot;&gt;&lt;/div&gt;\n' +
                     '&lt;script&gt;\n' +
-                    '   const vizualizator = new IPVizualizator(\n' +
+                    '   const visualizator = new IPVisualizator(\n' +
                     JSON.stringify(parameters, null, ' ') +
                     ');\n' +
                     '&lt;/script&gt;'

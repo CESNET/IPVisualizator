@@ -1,5 +1,5 @@
 /*
-* ipvizualizator.js v0.9
+* ipvisualizator.js v0.9
 *
 * Copyright (c) 2020 Jakub Jancicka <jancijak@fit.cvut.cz>
 * Released under Apache license v2.0
@@ -9,7 +9,7 @@
 /*jslint esversion: 6 */
 
 
-class IPVizualizator {
+class IPVisualizator {
 
     constructor(args) {
         this.Size = {'small': 512, 'regular': 768, 'large': 1024, 'xlarge': 4096};
@@ -18,7 +18,7 @@ class IPVizualizator {
         // Check if required parameters are not missing
         for(const parameter of RequiredParameters) {
             if(!(parameter in args)) {
-                console.error('IPVizualizator: required "' + parameter + '" key missing in constructor.');
+                console.error('IPVisualizator: required "' + parameter + '" key missing in constructor.');
                 return;
             }
         }
@@ -53,7 +53,7 @@ class IPVizualizator {
             for (const net of args.overlay_networks) {
                 var network = this.convert_network_from_string(net.network);
                 if(network[0] == false) {
-                    console.error('IPVizualizator: Overlay network "' + net.network + '" has wrong format - ' + network[1] + '.');
+                    console.error('IPVisualizator: Overlay network "' + net.network + '" has wrong format - ' + network[1] + '.');
                 }
 
                 var subnet = {'text': net.text, 'ip': network[1], 'mask': network[2]};
@@ -76,7 +76,7 @@ class IPVizualizator {
         this.network_data = {};
 
         // Inject html elements
-        this.create_ipvizualizator();
+        this.create_ipvisualizator();
 
         // Load data from server and render maps
         this.update();
@@ -193,7 +193,7 @@ class IPVizualizator {
 
         this.canvas_size = size;
 
-        // Resize IPVizualizator's html elements
+        // Resize IPVisualizator's html elements
         this.canvas
             .attr('width', this.canvas_size)
             .attr('height', this.canvas_size)
@@ -224,7 +224,7 @@ class IPVizualizator {
     // ------- Data binding --------
 
     create_api_call_url() {
-        return this.api + "/vizualizator/" + this.token +
+        return this.api + "/visualizator/" + this.token +
                           "/map/" + this.network +
                           "/" + this.mask +
                           "?resolution=" + (this.mask + this.resolution) +
@@ -544,13 +544,13 @@ class IPVizualizator {
 
     // ------- Methods for visual interaction --------
 
-    create_ipvizualizator() {
-        // Create tooltip - only one for all existing IPVizualizators on page
-        if (d3.select(".ipvizualizator-tooltip").empty() == true) {
+    create_ipvisualizator() {
+        // Create tooltip - only one for all existing IPVisualizators on page
+        if (d3.select(".ipvisualizator-tooltip").empty() == true) {
             this.tooltip = d3
                 .select(document.body)
                 .append("div")
-                .classed("ipvizualizator-tooltip", true)
+                .classed("ipvisualizator-tooltip", true)
                 .style("position", "absolute")
                 .style("display", "inline-block")
                 .style("padding", "10px")
@@ -563,10 +563,10 @@ class IPVizualizator {
                 .style("opacity", "0")
                 .style("z-index", "99");
         } else {
-            this.tooltip = d3.select(".ipvizualizator-tooltip");
+            this.tooltip = d3.select(".ipvisualizator-tooltip");
         }
 
-        // Create container for whole IPVizualizator
+        // Create container for whole IPVisualizator
         this.container = d3
             .select(this.id)
             .classed("card", true)
@@ -648,7 +648,7 @@ class IPVizualizator {
             .style("width", this.canvas_size + "px")
             .style("height", this.canvas_size + "px");
 
-        // Loading status - appears when IPVizualizator is updating
+        // Loading status - appears when IPVisualizator is updating
         this.status_loading = this.map
             .append("div")
             .classed("spinner-border text-primary", true)
