@@ -82,12 +82,8 @@ paths:
           description: "Dataset token doesn't exist"
           schema:
             $ref: "#/definitions/ResponseStatus"
-        401:
-          $ref: '#/responses/UnauthorizedError'
       produces:
         - "application/json"
-      security:
-        - APIKey: []
     put:
       tags: ["Visualizator"]
       summary: "Update IPs and their values for existing dataset (delete all old records)"
@@ -519,7 +515,6 @@ definitions:
     type: "object"
     required:
       - "token"
-      - "user"
       - "size"
       - "dataset_created"
       - "dataset_updated"
@@ -529,10 +524,6 @@ definitions:
         type: "string"
         description: "Dataset token"
         example: "UeU5mCtOA9zvYxch_S6Hog"
-      user:
-        type: "object"
-        description: "Dataset owner"
-        $ref: "#/definitions/ResponseUser"
       size:
         type: "number"
         description: "Number of IP addresses in dataset"

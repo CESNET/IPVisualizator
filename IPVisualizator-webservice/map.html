@@ -23,8 +23,8 @@
             const visualizator = new IPVisualizator(
             {
                  "id": "#visualizator",
-                 "api": "http://127.0.0.1:8080/api/v1/",
-                 "token": "xd5qaZS8Z5od3sVYsPCS4A",
+                 "api": "https://var.liberouter.org/ipvisualizator",
+                 "token": "aucy3-N15qpf4-TjdD6kBA",
                  "network": "0.0.0.0",
                  "mask": 0,
                  "resolution": 16,
@@ -34,6 +34,7 @@
                   "bordered_pixel": true,
                   "static": false,
                   "show_overlay": true,
+                  "show_metadata": false,
                   "zoom_mask": 8,
                   "map_opacity": 1,
                   "overlay_opacity": 1,
@@ -44,15 +45,51 @@
                   "zoom_color": "#ff0000",
                   "overlay_text_position": "inside"
                  },
-                 "overlay_networks": [
-                  {
-                   "text": "Multicast",
-                   "network": "224.0.0.0/4"
-                  },
-                  {
-                   "text": "Reserved",
-                   "network": "240.0.0.0/4"
-                  }
+                "overlay_networks": [
+                    {
+                        "text": "Reserved",
+                        "network": "0.0.0.0/8"
+                    },
+                    {
+                        "text": "Private",
+                        "network": "10.0.0.0/8"
+                    },
+                    {
+                        "text": "Reserved",
+                        "network": "100.64.0.0/10"
+                    },
+                    {
+                        "text": "Loopback",
+                        "network": "127.0.0.0/8"
+                    },
+                    {
+                        "text": "Reserved",
+                        "network": "169.254.0.0/16"
+                    },
+                    {
+                        "text": "Private",
+                        "network": "172.16.0.0/12"
+                    },
+                    {
+                        "text": "Private",
+                        "network": "192.168.0.0/16"
+                    },
+                    {
+                        "text": "Reserved",
+                        "network": "198.18.0.0/16"
+                    },
+                    {
+                        "text": "Reserved",
+                        "network": "198.19.0.0/16"
+                    },
+                    {
+                        "text": "Multicast",
+                        "network": "224.0.0.0/4"
+                    },
+                    {
+                        "text": "Reserved",
+                        "network": "240.0.0.0/4"
+                    },
                  ]
             });
         }); 

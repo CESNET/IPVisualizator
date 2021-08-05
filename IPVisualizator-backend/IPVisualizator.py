@@ -87,21 +87,13 @@ def create_new_dataset_api(user, records):
     return {"status": 200, "token": dataset.token}, 200
 
 
-def get_dataset_metadata_api(user, token):
+def get_dataset_metadata_api(token):
     if db.dataset_exist(token) is False:
         return {"status": 404, "detail": "Dataset not found"}, 404
 
-    user = db.find_user_by_uid(user)
-
-    if db.user_permission(user, token) is False:
-        return {"status": 401, "detail": "User doesn't have a permission to manipulate with this dataset"}, 401
-
     metadata = db.get_dataset_metadata(token)
 
-    user = {"uid": metadata.user.uid, "username": metadata.user.username, "authorization": metadata.user.authorization,
-            "admin": metadata.user.admin, "owned_datasets": metadata.user.owned_datasets}
-
-    return {"token": metadata.token, "user": user, "size": metadata.size, "dataset_created": metadata.dataset_created,
+    return {"token": metadata.token, "size": metadata.size, "dataset_created": metadata.dataset_created,
             "dataset_updated": metadata.dataset_updated, "dataset_viewed": metadata.dataset_viewed}
 
 
